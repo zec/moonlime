@@ -1,0 +1,6 @@
+The input file language takes its inspiration from lex, the classic Unix
+lexer-generator, and Lemon, the LALR(1) parser-generator used by SQLite.
+An input file consists of a number of _token rules_, specifications of
+regular-expression patterns matched by the generated lexer and (optionally)
+the code to be run upon finding said pattern, and _directives_, non-pattern
+information to control some aspect of the generated code.
