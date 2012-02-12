@@ -1,0 +1,9 @@
+#!/usr/bin/lua
+
+-- In the source tree, the source files for the packages we want to load
+-- are in the same directory as this file; when installed onto a system,
+-- they will probably be in a different directory altogether.
+-- Accordingly, the installation script will modify the following line:
+package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
+
+require('limeparse')
