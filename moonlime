@@ -7,3 +7,31 @@
 package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
 
 require('limeparse')
+
+local argc, i = table.maxn(arg), 1
+local input, output
+
+-- Options processing
+while i <= argc do
+  if arg[i] == '-o' then
+    if output ~= nil then
+      io.stderr:write(arg[0] .. ': Error: Multiple output files specified\n')
+      os.exit(1)
+    end
+
+    i = i + 1
+    output = arg[i]
+  else
+    if input ~= nil then
+      io.stderr:write(arg[0] .. ': Error: Multiple input files specified\n')
+      os.exit(1)
+    end
+
+    input = arg[i]
+  end
+
+  i = i + 1
+end
+
+--print('input = ' .. tostring(input))
+--print('output = ' .. tostring(output))
