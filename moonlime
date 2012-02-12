@@ -36,3 +36,11 @@ end
 
 --print('input = ' .. tostring(input))
 --print('output = ' .. tostring(output))
+
+local fin = io.stdin
+
+if input ~= nil then
+  fin = io.open(input, 'r')
+end
+
+print(limeparse.readFile(fin))
