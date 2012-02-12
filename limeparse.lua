@@ -93,9 +93,39 @@ local function readWhitespace(conf, s)
     end
   end
 
-  return true, s
+  return true, ''
 end
 
+-- Skip through a C++-style short comment
+local function readShortComment(conf, s)
+  local moreS = ''
+  local a,b
+
+  -- Skip past intial '//'
+  while string.len(s) < 2 do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then return true, '' end
+    s = s .. moreS
+  end
+  s = string.sub(s, 3, -1)
+
+  while moreS ~= nil do
+    s = s .. moreS
+    a,b = string.find(s, '\n', 1, true)
+
+    if a ~= nil then
+      return true, string.sub(s, b+1, -1)
+    else
+      moreS = coroutine.yield(false, nil)
+    end
+  end
+
+  return true, ''
+end
+
+-- Based on the first bytes of s, choose a sub-parser to handle the first
+-- part of s; returns two values, the sub-parser as a coroutine or nil,
+-- and whether or not s is not sufficient to determine the next sub-parser.
 local function chooseSubparser(s)
   local firstByte = string.sub(s, 1, 1)
 
@@ -109,6 +139,8 @@ local function chooseSubparser(s)
       return nil, true
     elseif secondByte == '*' then
       return coroutine.create(readCComment), false
+    elseif secondByte == '/' then
+      return coroutine.create(readShortComment), false
     else
       error('Unknown thing ' .. string.sub(s, 1, 2))
     end
@@ -117,6 +149,7 @@ local function chooseSubparser(s)
   end
 end
 
+-- The top-level file parser
 function readFile(f)
   local conf, state = {}, nil
   local buf, inString = '', f:read(blockSize)
