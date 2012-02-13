@@ -118,6 +118,8 @@ local function readShortComment(conf, s)
     else
       moreS = coroutine.yield(false, nil)
     end
+
+    s = ''
   end
 
   return true, ''
