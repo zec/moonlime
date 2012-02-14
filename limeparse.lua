@@ -151,26 +151,33 @@ local function chooseSubparser(s)
   end
 end
 
--- The top-level file parser
+-- The top-level file parser. Either returns a table corresponding to the
+-- successfully-parsed file or raises an error.
 function readFile(f)
   local conf, state = {}, nil
   local buf, inString = '', f:read(blockSize)
   local co = nil
   local coFirst = false
   local needMoreBytes = false
+  local isDone = false
+  local atEOF = false
 
   local runSubparser = function()
     if co == nil then -- No running sub-parser; start one up
       co, needMoreBytes = chooseSubparser(buf)
       coFirst = true
     else
-      local isOK, isDone, s
+      local isOK, s
+      local buf2 = buf
+      if atEOF and buf == '' then
+        buf2 = nil
+      end
 
       if coFirst then
-        isOK, isDone, s = coroutine.resume(co, conf, buf)
+        isOK, isDone, s = coroutine.resume(co, conf, buf2)
         coFirst = false
       else
-        isOK, isDone, s = coroutine.resume(co, buf)
+        isOK, isDone, s = coroutine.resume(co, buf2)
       end
 
       if not isOK then
@@ -195,10 +202,11 @@ function readFile(f)
 
     inString = f:read(blockSize)
   end
+  atEOF = true
 
   -- We may have hit EOF, but there may still be unparsed parts of the file...
   needMoreBytes = false
-  while buf ~= '' and not needMoreBytes do
+  while (buf ~= '' or not isDone) and not needMoreBytes do
     runSubparser()
   end
 
