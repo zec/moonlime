@@ -125,6 +125,57 @@ local function readShortComment(conf, s)
   return true, ''
 end
 
+-- This is a table with directive names (with '%' at start) as keys and arrays
+-- as values, where the first element of the array is a function to run if the
+-- directive name is at the exact end of the file and the second element is
+-- a function to run if there is still part of the file after the array;
+-- a[1] = function(conf, d) -> (ignored) and a[2] = function(conf, s, d) -> s
+-- where conf is the table representing the parsed file, s is the read-in but
+-- currently-unparsed part of the file, and d is the directive name.
+local directives
+
+-- Read a directive, which is of the form '%name [stuff]', where the exact
+-- form of [stuff] depends on the directive.
+local function readDirective(conf, s)
+  local moreS = ''
+  local a,b = nil, nil
+
+  a,b = string.find(s, '[ \t\n]')
+  -- Try to find the first whitespace after the directive name:
+  while a == nil do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then break end
+    s = s .. moreS
+    a,b = string.find(s, '[ \t\n]')
+  end
+
+  if a == nil then -- directive name is at EOF
+    if directives[s] == nil then
+      error('Unrecognized directive ' .. s)
+    end
+
+    directives[s][1](conf, s)
+    return true, ''
+  else
+    local name = string.sub(s, 1, b-1)
+    if directives[name] == nil then
+      error('Unrecognized directive ' .. name)
+    end
+
+    s = string.sub(s, b, -1)
+    return true, directives[name][2](conf, s, name)
+  end
+
+  return true, s
+end
+
+directives = {
+  ['%testdirective']= { function(c, d) error('1') end,
+                        function(c, s, d) error('2') end },
+  ['%othertestdirective'] = { function(c, d) c.a = 1 end,
+                              function(c, s, d) c.a = 2 return s end }
+}
+
 -- Based on the first bytes of s, choose a sub-parser to handle the first
 -- part of s; returns two values, the sub-parser as a coroutine or nil,
 -- and whether or not s is not sufficient to determine the next sub-parser.
@@ -146,6 +197,10 @@ local function chooseSubparser(s)
     else
       error('Unknown thing ' .. string.sub(s, 1, 2))
     end
+
+  elseif firstByte == '%' then
+    return coroutine.create(readDirective), false
+
   else
     error('Unknown thing ' .. firstByte)
   end
