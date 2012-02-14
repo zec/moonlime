@@ -20,6 +20,10 @@ setfenv(1, P)
 -- How much of a file do we read at one time?
 blockSize = 8192
 
+-- Commonly-used patters
+local WHSP = '[ \t\n]'
+local nWHSP = '[^ \t\n]'
+
 -- The file parser is structure as a top-level function (readFile) that
 -- chooses a sub-parser based on the initial bytes of a section (regexp,
 -- directive, comment, etc.); the sub-parser is run as a coroutine with the
@@ -84,7 +88,7 @@ local function readWhitespace(conf, s)
 
   while moreS ~= nil do
     s = s .. moreS
-    a,b = string.find(s, '[^ \t\n]')
+    a,b = string.find(s, nWHSP)
 
     if a ~= nil then
       return true, string.sub(s, b, -1)
@@ -140,13 +144,13 @@ local function readDirective(conf, s)
   local moreS = ''
   local a,b = nil, nil
 
-  a,b = string.find(s, '[ \t\n]')
+  a,b = string.find(s, WHSP)
   -- Try to find the first whitespace after the directive name:
   while a == nil do
     moreS = coroutine.yield(false, nil)
     if moreS == nil then break end
     s = s .. moreS
-    a,b = string.find(s, '[ \t\n]')
+    a,b = string.find(s, WHSP)
   end
 
   if a == nil then -- directive name is at EOF
@@ -169,9 +173,14 @@ local function readDirective(conf, s)
   return true, s
 end
 
+local function makeError(s)
+  return function()
+    error(s, 0)
+  end
+end
+
 directives = {
-  ['%testdirective']= { function(c, d) error('1') end,
-                        function(c, s, d) error('2') end },
+  ['%testdirective']= { makeError('1'), makeError('2') },
   ['%othertestdirective'] = { function(c, d) c.a = 1 end,
                               function(c, s, d) c.a = 2 return s end }
 }
