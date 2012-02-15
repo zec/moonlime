@@ -394,14 +394,14 @@ local function readNumRepOperator(conf, s)
     error('Tried to use repetition on an empty regular expression')
   end
 
-  a, b, x = string.match(s, '^{(%d+)}')
+  a, b, x = string.find(s, '^{(%d+)}')
   if a ~= nil then
     x = tonumber(x, 10)
     conf.currRegex = lu.re.num(conf.currRegex, x, x)
     return true, string.sub(s, b+1, -1)
   end
 
-  a, b, x, y = string.match(s, '^{(%d*),(%d*)}')
+  a, b, x, y = string.find(s, '^{(%d*),(%d*)}')
   if a ~= nil then
     if x == '' then x = nil else x = tonumber(x, 10) end
     if y == '' then y = nil else y = tonumber(y, 10) end
@@ -488,6 +488,29 @@ local function chooseSubparser(s)
   if firstByte == ' ' or firstByte == '\t' or firstByte == '\n' then
     return coroutine.create(readWhitespace), false
 
+  elseif firstByte == '?' or firstByte == '*' or firstByte == '+' then
+    return coroutine.create(readRegexOperator), false
+
+  elseif firstByte == '(' or firstByte == ')' then
+    return coroutine.create(readParenOperators), false
+
+  elseif firstByte == '|' then
+    return coroutine.create(readOptionOperator), false
+
+  -- this could be the start of a code block or part of a regular expression...
+  elseif firstByte == '{' then
+    local a,b = string.find(s, '}', 1, true)
+    if a == nil then -- need more context
+      return nil, true
+    else
+      a,b = string.find(s, '^{%d*,?%d*}')
+      if a == nil then
+        return coroutine.create(readCodeAction), false
+      else
+        return coroutine.create(readNumRepOperator), false
+      end
+    end
+
   elseif firstByte == '/' then
     local secondByte = string.sub(s, 2, 2)
 
@@ -498,14 +521,14 @@ local function chooseSubparser(s)
     elseif secondByte == '/' then
       return coroutine.create(readShortComment), false
     else
-      error('Unknown thing ' .. string.sub(s, 1, 2))
+      return coroutine.create(readSingleCharRegex), false
     end
 
   elseif firstByte == '%' then
     return coroutine.create(readDirective), false
 
   else
-    error('Unknown thing ' .. firstByte)
+    return coroutine.create(readSingleCharRegex), false
   end
 end
 
