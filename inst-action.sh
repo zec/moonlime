@@ -8,6 +8,6 @@ sed -e '1c#!'"${interpname}" \
 
 mkdir -p "${luadir}" "${tmpldir}" "${bindir}"
 
-PKGS="limeparse.lua"
+PKGS="limeparse.lua limeutil.lua"
 install -m 444 ${PKGS} "${luadir}"
 install -m 755 ${TMPLUA} "${bindir}/${binname}"
