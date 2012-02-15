@@ -179,10 +179,159 @@ local function makeError(s)
   end
 end
 
+-- Read a chunk of C/C++ code delimited with braces, possibly with whitespace
+-- in front. Called with the read-in but currently unparsed part of the file,
+-- and returns the C code as a string, as well as the unparsed stuff afterward.
+local function readCode(s)
+  local a,b
+  local moreS
+  local braceDepth = 1
+  local blk = ''
+
+  -- Skip over leading whitespace
+  a,b = string.find(s, nWHSP)
+  while a == nil do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('Looking for code block but got EOF!')
+    end
+
+    s = moreS
+    a,b = string.find(s, nWHSP)
+  end
+
+  -- Check for opening brace
+  if string.sub(s, a, a) ~= '{' then
+    error('Looking for code block but got something other than "{"')
+  end
+  s = string.sub(s, a+1, -1)
+
+  -- Scan through C code: we have to look out for comments (/* ... */ and
+  -- // ... \n), open and close braces ({ and }), character literals
+  -- ('...', with care taken with \'s), and string literals ("...", again
+  -- with backslashes special).
+  local CPAT = '[/\'\"{}]'
+  local function getMore()
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('EOF occurred in the middle of a code block!')
+    end
+  end
+
+  while braceDepth > 0 do
+    -- First off, find the next comment, brace, or character/string literal:
+    a = string.find(s, CPAT)
+    if a == nil then
+      getMore()
+      blk = blk .. s
+      s = moreS
+    else
+      b = string.sub(s, a, a)
+
+      if b == '/' then -- comment...or division...
+        blk = blk .. string.sub(s, 1, a-1)
+        s = string.sub(s, a, -1)
+        if string.len(s) < 2 then
+          getMore()
+          s = s .. moreS
+        end
+
+        b = string.sub(s, 2, 2)
+        if b == '*' then -- C-style comment
+          blk = blk .. '/*'
+          s = string.sub(s, 3, -1)
+          a,b = string.find(s, '*/', 1, true)
+          while a == nil do
+            getMore()
+            blk = blk .. string.sub(s, 1, -2)
+            s = string.sub(s, -1, -1) .. moreS
+            a,b = string.find(s, '*/', 1, true)
+          end
+          blk = blk .. string.sub(s, 1, b)
+          s = string.sub(s, b+1, -1)
+
+        elseif b == '/' then -- C++-style comment
+          a = string.find(s, '\n', 1, true)
+          while a == nil do
+            getMore()
+            blk = blk .. s
+            s = moreS
+            a = string.find(s, '\n', 1, true)
+          end
+          blk = blk .. string.sub(s, 1, a)
+          s = string.sub(s, a+1, -1)
+
+        else -- false alarm - skip over the '/'
+          blk = blk .. '/'
+          s = string.sub(s, 2, -1)
+        end
+
+      elseif b == '{' then -- begin block
+        blk = blk .. string.sub(s, 1, a)
+        s = string.sub(s, a+1, -1)
+        braceDepth = braceDepth + 1
+
+      elseif b == '}' then -- end block
+        blk = blk .. string.sub(s, 1, a-1)
+        s = string.sub(s, a+1, -1)
+        braceDepth = braceDepth - 1
+        if braceDepth > 0 then
+          blk = blk .. '}'
+        end
+
+      else -- character/string literal
+        local isDone = false
+        local pattern = '[\'\\]'
+        if b == '\"' then
+          pattern = '[\"\\]'
+        end
+
+        blk = blk .. string.sub(s, 1, a)
+        s = string.sub(s, a+1, -1)
+
+        while not isDone do
+          a = string.find(s, pattern)
+          while a == nil do
+            getMore()
+            blk = blk .. s
+            s = moreS
+            a = string.find(s, pattern)
+          end
+
+          b = string.sub(s, a, a)
+          if b == "\'" or b == '\"' then
+            isDone = true
+            blk = blk .. string.sub(s, 1, a)
+            s = string.sub(s, a+1, -1)
+          else -- escape
+            if string.len(s) < a+1 then
+              getMore()
+              s = s .. moreS
+            end
+            blk = blk .. string.sub(s, 1, a+1)
+            s = string.sub(s, a+2, -1)
+          end
+        end
+      end
+    end
+  end
+
+  return blk, s
+end
+
+local function makeCode(field)
+  return function(c, s, d)
+    local a, b = readCode(s)
+    c[field] = a
+    return b
+  end
+end
+
 directives = {
   ['%testdirective']= { makeError('1'), makeError('2') },
   ['%othertestdirective'] = { function(c, d) c.a = 1 end,
-                              function(c, s, d) c.a = 2 return s end }
+                              function(c, s, d) c.a = 2 return s end },
+  ['%header'] = { makeError('bleh'), makeCode('header') }
 }
 
 -- Based on the first bytes of s, choose a sub-parser to handle the first
