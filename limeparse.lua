@@ -479,6 +479,24 @@ local function readOptionOperator(conf, s)
   return true, string.sub(s, 2, -1)
 end
 
+-- Sub-parser for actions associated with regexes
+local function readCodeAction(conf, s)
+  local code
+  -- No regex or finding oneself nested inside a stack of subregexes is
+  -- an error condition
+  if conf.currRegex == nil or table.maxn(conf.regexStack) > 0 then
+    error('A code block either without a regex or inside a regex!')
+  end
+
+  code, s = readCode(s)
+
+  table.insert(conf.tokens, { conf.currRegex, code })
+
+  conf.currRegex = nil
+
+  return true, s
+end
+
 -- Based on the first bytes of s, choose a sub-parser to handle the first
 -- part of s; returns two values, the sub-parser as a coroutine or nil,
 -- and whether or not s is not sufficient to determine the next sub-parser.
