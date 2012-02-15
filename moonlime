@@ -38,13 +38,22 @@ end
 local fin = io.stdin
 
 if input ~= nil then
-  fin = io.open(input, 'r')
+  local errMsg
+  fin, errMsg = io.open(input, 'r')
+  if fin == nil then
+    io.stderr:write(arg[0] .. ': Error : ' .. tostring(errMsg) .. '\n')
+    os.exit(1)
+  end
 end
 
 require('limeparse')
 require('limeutil')
 
-local x = limeparse.readFile(fin)
+local ok, x = pcall(limeparse.readFile, fin)
+if not ok then
+  io.stderr:write(arg[0] .. ': Parsing error: ' .. tostring(x) .. '\n')
+  os.exit(1)
+end
 print(x)
 print('header = {' .. x.header .. '}\n')
 for i = 1,table.maxn(x.tokens) do
