@@ -110,7 +110,7 @@ function re.concat(r)
   return x
 end
 
-local maybeMetatable = { __ index = {
+local maybeMetatable = { __index = {
   type = 'maybe'
 } }
 
