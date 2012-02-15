@@ -14,6 +14,10 @@ end
 local coroutine = coroutine
 local string = string
 local error = error
+local tonumber = tonumber
+local table = table
+require('limeutil')
+local lu = limeutil
 
 setfenv(1, P)
 
@@ -334,6 +338,147 @@ directives = {
   ['%header'] = { makeError('bleh'), makeCode('header') }
 }
 
+-- Sub-parser for the single-character and 'any' (.) regular expression
+-- fragments
+local function readSingleCharRegex(conf, s)
+  local re, c
+  c = string.sub(s, 1, 1)
+  s = string.sub(s, 2, -1)
+
+  if c == '.' then
+    re = lu.re.any()
+  else
+    re = lu.re.char(c)
+  end
+
+  if conf.currRegex == nil then
+    conf.currRegex = re
+  elseif conf.currRegex.type == 'concat' then
+    conf.currRegex:add(re)
+  else
+    local cat = lu.re.concat(conf.currRegex)
+    cat:add(re)
+    conf.currRegex = cat
+  end
+
+  return true, s
+end
+
+-- Sub-parser for the '?', '*', and '+' regular expression operators
+local function readRegexOperator(conf, s)
+  local reGen, c
+  c = string.sub(s, 1, 1)
+  s = string.sub(s, 2, -1)
+
+  if c == '?' then
+    reGen = lu.re.maybe
+  elseif c == '*' then
+    reGen = lu.re.star
+  else -- c == '+'
+    reGen = lu.re.plus
+  end
+
+  if conf.currRegex == nil then
+    error('Tried to use ' .. c .. ' on an empty regular expression')
+  end
+
+  conf.currRegex = reGen(conf.currRegex)
+  return true, s
+end
+
+-- Sub-parser for the numbered repetition regular-expression operator
+local function readNumRepOperator(conf, s)
+  local a, b, x, y
+
+  if conf.currRegex == nil then
+    error('Tried to use repetition on an empty regular expression')
+  end
+
+  a, b, x = string.match(s, '^{(%d+)}')
+  if a ~= nil then
+    x = tonumber(x, 10)
+    conf.currRegex = lu.re.num(conf.currRegex, x, x)
+    return true, string.sub(s, b+1, -1)
+  end
+
+  a, b, x, y = string.match(s, '^{(%d*),(%d*)}')
+  if a ~= nil then
+    if x == '' then x = nil else x = tonumber(x, 10) end
+    if y == '' then y = nil else y = tonumber(y, 10) end
+    if x == nil and y == nil then
+      conf.currRegex = lu.re.star(conf.currRegex)
+    else
+      conf.currRegex = lu.re.num(conf.currRegex, x, y)
+    end
+    return true, string.sub(s, b+1, -1)
+  end
+
+  error('An invalid repetition was given')
+end
+
+-- Sub-parser for the '(' and ')' regular expression operators
+local function readParenOperators(conf, s)
+  local c = string.sub(s, 1, 1)
+  local re = conf.currRegex
+
+  if re == nil then
+    re = lu.re.zero()
+  end
+
+  conf.currRegex = nil
+
+  if c == '(' then
+    if re.type ~= 'concat' then
+      re = lu.re.concat(re)
+    end
+    table.insert(conf.regexStack, re)
+  else -- c == ')'
+    local x = table.remove(conf.regexStack)
+    if x == nil then
+      error('end-paren without start-paren')
+    elseif x.type == 'option' then
+      x:add(re)
+      local y = table.remove(conf.regexStack)
+      if y ~= nil and y.type == 'concat' then
+        y:add(x)
+        x = y
+      else
+        error('regular-expression stack messed up')
+      end
+      conf.currRegex = x
+    else -- x.type == 'concat'
+      conf.currRegex = x
+    end
+  end
+
+  return true, string.sub(s, 2, -1)
+end
+
+-- Sub-parser for the '|' regular expression operator
+local function readOptionOperator(conf, s)
+  local re = conf.currRegex
+
+  if re == nil then
+    re = lu.re.zero()
+  end
+
+  local top = table.remove(conf.regexStack)
+
+  if top ~= nil and top.type == 'option' then
+    top:add(re)
+    table.insert(conf.regexStack, top)
+  else
+    if top ~= nil then
+      table.insert(conf.regexStack, top)
+    end
+    table.insert(conf.regexStack, lu.re.option(re))
+  end
+
+  conf.currRegex = nil
+
+  return true, string.sub(s, 2, -1)
+end
+
 -- Based on the first bytes of s, choose a sub-parser to handle the first
 -- part of s; returns two values, the sub-parser as a coroutine or nil,
 -- and whether or not s is not sufficient to determine the next sub-parser.
@@ -367,7 +512,7 @@ end
 -- The top-level file parser. Either returns a table corresponding to the
 -- successfully-parsed file or raises an error.
 function readFile(f)
-  local conf, state = {}, nil
+  local conf, state = lu.makeFileData(), nil
   local buf, inString = '', f:read(blockSize)
   local co = nil
   local coFirst = false
