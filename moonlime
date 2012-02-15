@@ -7,8 +7,6 @@
 -- Accordingly, the installation script will modify the following line:
 package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
 
-require('limeparse')
-
 local argc, i = table.maxn(arg), 1
 local input, output
 
@@ -43,4 +41,14 @@ if input ~= nil then
   fin = io.open(input, 'r')
 end
 
-print(limeparse.readFile(fin))
+require('limeparse')
+require('limeutil')
+
+local x = limeparse.readFile(fin)
+print(x)
+print('header = {' .. x.header .. '}\n')
+for i = 1,table.maxn(x.tokens) do
+  print('regexp[' .. i .. ']:')
+  limeutil.printRegex(io.stdout, x.tokens[i][1])
+  print('code[' .. i .. ']:\n', x.tokens[i][2])
+end
