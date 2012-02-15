@@ -179,7 +179,7 @@ end
 
 local function makeError(s)
   return function()
-    error(s, 0)
+    error(s, 1)
   end
 end
 
@@ -503,7 +503,10 @@ end
 local function chooseSubparser(s)
   local firstByte = string.sub(s, 1, 1)
 
-  if firstByte == ' ' or firstByte == '\t' or firstByte == '\n' then
+  if firstByte == '' then -- 'No data' is not enough to go on
+    error('Premature EOF!')
+
+  elseif firstByte == ' ' or firstByte == '\t' or firstByte == '\n' then
     return coroutine.create(readWhitespace), false
 
   elseif firstByte == '?' or firstByte == '*' or firstByte == '+' then
