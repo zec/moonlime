@@ -487,18 +487,6 @@ local function readNumRepOperator(conf, s)
   error('An invalid repetition was given')
 end
 
-local function stackState(conf)
-  local msg = ''
-  for i = table.maxn(conf.regexStack),1,-1 do
-    msg = msg .. conf.regexStack[i].type .. '\n'
-  end
-  return msg
-end
-
-local function stackError(msg, conf)
-  error(msg .. '\n' .. stackState(conf))
-end
-
 -- Sub-parser for the '(' and ')' regular expression operators
 local function readParenOperators(conf, s)
   local c = string.sub(s, 1, 1)
@@ -525,7 +513,12 @@ local function readParenOperators(conf, s)
   else -- c == ')'
     local top = table.remove(conf.regexStack)
     while top ~= nil and top.type ~= 'paren' do
-      top:add(re)
+      if re ~= nil then
+        top:add(re)
+      elseif top.type == 'option' then
+        top:add(lu.re.zero())
+      end
+
       re, top = top, table.remove(conf.regexStack)
     end
 
@@ -554,7 +547,19 @@ local function readOptionOperator(conf, s)
   elseif top.type == 'option' then
     top:add(re)
   elseif top.type == 'concat' then
-    top = lu.re.option(top)
+    if re.type ~= 'zero' then
+      top:add(re)
+    end
+
+    local next = table.remove(conf.regexStack)
+    if next ~= nil and next.type == 'option' then
+      next:add(top)
+      top = next
+    else
+      table.insert(conf.regexStack, next)
+      top = lu.re.option(top)
+    end
+
   else -- top.type == 'paren'
     table.insert(conf.regexStack, top)
     top = lu.re.option(re)
@@ -571,15 +576,19 @@ local function readCodeAction(conf, s)
   local re, code
   -- No regex or finding oneself nested inside a stack of subregexes is
   -- an error condition
-  if conf.currRegex == nil then
+  if conf.currRegex == nil and conf.regexStack[1] == nil then
     error('A code block without a regex!')
   elseif table.maxn(conf.regexStack) > 1 then
-    stackError('A code block inside a regex!', conf)
+    error('A code block inside a regex!')
   end
 
   if conf.regexStack[1] ~= nil then
     re = table.remove(conf.regexStack)
-    re:add(conf.currRegex)
+    if re.type == 'option' and conf.currRegex == nil then
+      re:add(lu.re.zero())
+    else
+      re:add(conf.currRegex)
+    end
   else
     re = conf.currRegex
   end

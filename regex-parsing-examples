@@ -1,0 +1,52 @@
+Some example traces through parsing regular expressions--this was useful in
+figuring out what each sub-parser needed to do.
+
+Regular expression: a|b
+
+character    currRegex     regexStack
+---------    ---------     ----------
+a            a=char(a)
+|            nil           option(a)
+b            b=char(b)     option(a)
+[end]        option(a,b)
+
+Regular expression: ab|cd
+
+character    currRegex     regexStack
+---------    ---------     ----------
+a            a=char(a)
+b            b=char(b)     concat(a)
+|            nil           option(ab=concat(a, b))
+c            c=char(c)     option(ab)
+d            d=char(d)     concat(c), option(ab)
+[end]        option(ab, concat(c, d))
+
+Regular expression: a|(bcd)
+
+character    currRegex     regexStack
+---------    ---------     ----------
+a            a=char(a)
+|            nil           option(a)
+(            nil           paren, option(a)
+b            b=char(b)     paren, option(a)
+c            c=char(c)     concat(b), paren, option(a)
+d            d=char(d)     concat(b,c), paren, option(a)
+)            concat(b,c,d) option(a)
+[end]        option(a, concat(b,c,d))
+
+Regular expression: a(bc|d|ef)g
+
+character    currRegex     regexStack
+---------    ---------     ----------
+a            a=char(a)
+(            nil           paren, concat(a)
+b            b=char(b)     paren, concat(a)
+c            c=char(c)     concat(b), paren, concat(a)
+|            nil           option(bc=concat(b, c)), paren, concat(a)
+d            d=char(d)     option(bc), paren, concat(a)
+|            nil           option(bc, d), paren, concat(a)
+e            e=char(e)     option(bc, d), paren, concat(a)
+f            f=char(f)     concat(e), option(bc, d), paren, concat(a)
+)            x=option(bc, d, concat(e, f))     concat(a)
+g            g=char(g)     concat(a, x)
+[end]        concat(a, x, g)
