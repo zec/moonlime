@@ -176,11 +176,11 @@ function printRegex(f, r)
     if re.type == 'char' then
       f:write(sp .. 'char: [' .. re.char .. ']\n')
     elseif re.type == 'class' then
-      f:write(sp .. 'class: [')
+      f:write(sp .. 'class: ')
       if re.negated then
         f:write('^')
       end
-      f:write(re.set .. ']\n')
+      f:write('[' .. re.set .. ']\n')
     elseif re.type == 'any' or re.type == 'zero' then
       f:write(sp .. re.type .. '\n')
     elseif re.type == 'maybe' or re.type == 'star' or re.type == 'plus' then
