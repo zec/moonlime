@@ -14,7 +14,7 @@ a?a { 5; }
 
 a?b*c+ { 8; }
 
-m(iss)+pi { 9; }
+m(iss)+ipi { 9; }
 
 z[^qua]y { 10; }
 

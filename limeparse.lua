@@ -18,8 +18,6 @@ local tonumber = tonumber
 local table = table
 require('limeutil')
 local lu = limeutil
--- dbg
-local err = io.stderr
 
 setfenv(1, P)
 
@@ -359,6 +357,9 @@ local function readSingleCharRegex(conf, s)
     local top = table.remove(conf.regexStack)
     if top == nil then
       top = lu.re.concat(conf.currRegex)
+    elseif top.type == 'paren' then
+      table.insert(conf.regexStack, top)
+      top = lu.re.concat(conf.currRegex)
     elseif top.type == 'option' then
       table.insert(conf.regexStack, top)
       top = lu.re.concat(conf.currRegex)
@@ -416,6 +417,9 @@ local function readCharClass(conf, s)
   else
     local top = table.remove(conf.regexStack)
     if top == nil then
+      top = lu.re.concat(conf.currRegex)
+    elseif top.type == 'paren' then
+      table.insert(conf.regexStack, top)
       top = lu.re.concat(conf.currRegex)
     elseif top.type == 'option' then
       table.insert(conf.regexStack, top)
@@ -501,93 +505,36 @@ local function readParenOperators(conf, s)
   local re = conf.currRegex
 
   if c == '(' then
-err:write('XXXXXXX(:\n' .. stackState(conf) .. 's=' .. s .. '\n')
-    local top = table.remove(conf.regexStack)
-    if top == nil then
-      top = lu.re.concat(re)
-      table.insert(conf.regexStack, top)
-    elseif top.type == 'option' then
-      if re ~= nil then
+    if re ~= nil then
+      local top = table.remove(conf.regexStack)
+      if top == nil then
+        top = lu.re.concat(re)
+      elseif top.type == 'concat' or top.type == 'option' then
         top:add(re)
+      else -- top.type == 'paren'
+        table.insert(conf.regexStack, top)
+        top = lu.re.concat(re)
       end
-      table.insert(conf.regexStack, top)
-    else -- top.type == 'concat'
-      if re ~= nil then
-        top:add(re)
-      end
+
       table.insert(conf.regexStack, top)
     end
 
-    top = lu.re.concat()
-    table.insert(conf.regexStack, top)
+    table.insert(conf.regexStack, lu.re.paren())
     conf.currRegex = nil
+
   else -- c == ')'
-err:write('XXXXXXX):\n' .. stackState(conf) .. 's=' .. s .. '\n')
-    local x = table.remove(conf.regexStack)
-
-    if x == nil then
-      stackError('end-paren without start-paren', conf)
-
-    elseif x.type == 'concat' then
-      if re ~= nil then
-        x:add(re)
-      end
-      conf.currRegex = x
-
-    else -- x.type == 'option'
-      if re ~= nil then
-        x:add(re)
-      else
-        x:add(lu.re.zero())
-      end
-
-      local y = table.remove(conf.regexStack)
-      if y ~= nil and y.type == 'concat' then -- which it *should*...
-        y:add(x)
-        x = y
-      else
-        stackError('end-paren without start-paren')
-      end
-
-      conf.currRegex = x
-
+    local top = table.remove(conf.regexStack)
+    while top ~= nil and top.type ~= 'paren' do
+      top:add(re)
+      re, top = top, table.remove(conf.regexStack)
     end
+
+    if top == nil then
+      error('close-paren without open-paren')
+    end
+
+    conf.currRegex = re
   end
-
---  if re == nil then
---    re = lu.re.zero()
---  end
-
---  conf.currRegex = nil
-
---  if c == '(' then
---    if re.type ~= 'concat' then
---      re = lu.re.concat(re)
---    end
---    table.insert(conf.regexStack, re)
---  else -- c == ')'
---    local x = table.remove(conf.regexStack)
---    if x == nil then
---      error('end-paren without start-paren')
---    elseif x.type == 'option' then
---      x:add(re)
---      local y = table.remove(conf.regexStack)
---      if y ~= nil and y.type == 'concat' then
---        y:add(x)
---        x = y
---      else
---local str = 'regular-expression stack messed up:\n'
---for i = table.maxn(conf.regexStack),1,-1 do
---  str = str .. conf.regexStack .. '\n'
---end
---error(str)
---        --error('regular-expression stack messed up')
---      end
---      conf.currRegex = x
---    else -- x.type == 'concat'
---      conf.currRegex = x
---    end
---  end
 
   return true, string.sub(s, 2, -1)
 end
@@ -602,16 +549,18 @@ local function readOptionOperator(conf, s)
 
   local top = table.remove(conf.regexStack)
 
-  if top ~= nil and top.type == 'option' then
+  if top == nil then
+    top = lu.re.option(re)
+  elseif top.type == 'option' then
     top:add(re)
+  elseif top.type == 'concat' then
+    top = lu.re.option(top)
+  else -- top.type == 'paren'
     table.insert(conf.regexStack, top)
-  else
-    if top ~= nil then
-      table.insert(conf.regexStack, top)
-    end
-    table.insert(conf.regexStack, lu.re.option(re))
+    top = lu.re.option(re)
   end
 
+  table.insert(conf.regexStack, top)
   conf.currRegex = nil
 
   return true, string.sub(s, 2, -1)
@@ -619,7 +568,6 @@ end
 
 -- Sub-parser for actions associated with regexes
 local function readCodeAction(conf, s)
-err:write('$$' .. s .. '$$\n')
   local re, code
   -- No regex or finding oneself nested inside a stack of subregexes is
   -- an error condition

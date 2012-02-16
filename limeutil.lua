@@ -171,6 +171,18 @@ function re.zero()
   return x
 end
 
+local parenMetatable = { __index = {
+  type = 'paren'
+} }
+
+-- Matches nothing; this should only exist on regexStack to delimit a paren
+-- expression
+function re.paren()
+  local x = { }
+  setmetatable(x, parenMetatable)
+  return x
+end
+
 -- Prints a human-readable representation of regular-expression tree r
 -- to file f
 function printRegex(f, r)
