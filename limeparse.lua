@@ -364,6 +364,57 @@ local function readSingleCharRegex(conf, s)
   return true, s
 end
 
+-- Sub-parser for the '[]' character-class regex fragment
+local function readCharClass(conf, s)
+  local done = false
+  local re = lu.re.charClass()
+
+  -- Get rid of initial '['
+  s = string.sub(s, 2, -1)
+
+  -- If there is a '^' at front, invert the sense
+  local c = string.sub(s, 1, 1)
+  while c == '' do
+    local moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('EOF occurred in middle of regular expression')
+    end
+    s = s .. moreS
+  end
+
+  if c == '^' then
+    re.negated = true
+    s = string.sub(s, 2, -1)
+  end
+
+  while not done do
+    local a = string.find(s, ']', 1, true)
+    if a == nil then
+      local moreS = coroutine.yield(false, nil)
+      if moreS == nil then
+        error('EOF occurred in middle of regular expression')
+      end
+      s = s .. moreS
+    else
+      re:add(string.sub(s, 1, a-1))
+      s = string.sub(s, a+1, -1)
+      done = true
+    end
+  end
+
+  if conf.currRegex == nil then
+    conf.currRegex = re
+  elseif conf.currRegex.type == 'concat' then
+    conf.currRegex:add(re)
+  else
+    local cat = lu.re.concat(conf.currRegex)
+    cat:add(re)
+    conf.currRegex = cat
+  end
+
+  return true, s
+end
+
 -- Sub-parser for the '?', '*', and '+' regular expression operators
 local function readRegexOperator(conf, s)
   local reGen, c
@@ -517,6 +568,9 @@ local function chooseSubparser(s)
 
   elseif firstByte == '|' then
     return coroutine.create(readOptionOperator), false
+
+  elseif firstByte == '[' then
+    return coroutine.create(readCharClass), false
 
   -- this could be the start of a code block or part of a regular expression...
   elseif firstByte == '{' then

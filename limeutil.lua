@@ -14,6 +14,8 @@ local setmetatable = setmetatable
 local ins = table.insert
 local maxn = table.maxn
 local string = string
+local pairs = pairs
+local concat = table.concat
 
 setfenv(1, P)
 
@@ -51,12 +53,12 @@ local classMetatable = { __index = {
       x[string.sub(s, i, i)] = true
     end
     for k in pairs(x) do
-      local a = string.find(t.set, x[k], 1, true)
+      local a = string.find(t.set, k, 1, true)
       if a == nil then
         ins(y, k)
       end
     end
-    t.set = t.set .. table.concat(y)
+    t.set = t.set .. concat(y)
   end
 } }
 
