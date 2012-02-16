@@ -12,10 +12,12 @@ end
 -- Imports
 local setmetatable = setmetatable
 local ins = table.insert
+local remove = table.remove
 local maxn = table.maxn
 local string = string
 local pairs = pairs
 local concat = table.concat
+local error = error
 
 setfenv(1, P)
 
@@ -35,7 +37,10 @@ end
 re = {}
 
 local charMetatable = { __index = {
-  type = 'char'
+  type = 'char',
+  optimize = function(r)
+    return r
+  end
 } }
 
 -- Matches a specific character
@@ -59,6 +64,9 @@ local classMetatable = { __index = {
       end
     end
     t.set = t.set .. concat(y)
+  end,
+  optimize = function(r)
+    return r
   end
 } }
 
@@ -70,7 +78,10 @@ function re.charClass()
 end
 
 local anyMetatable = { __index = {
-  type = 'any'
+  type = 'any',
+  optimize = function(r)
+    return r
+  end
 } }
 
 -- Matches any single non-newline character
@@ -82,7 +93,42 @@ end
 
 local optionMetatable = { __index = {
   type = 'option',
-  add = function(t, r) ins(t.enc, r) end
+  add = function(t, r) ins(t.enc, r) end,
+  optimize = function(r)
+    local opt, noZero, i = {}, true, 1
+
+    for j = 1,maxn(r.enc) do
+      opt[j] = r.enc[j]:optimize()
+    end
+
+    while i <= maxn(opt) do
+      while opt[i] ~= nil and opt[i].type == 'zero' do
+        remove(opt, i)
+        noZero = false
+      end
+      i = i + 1
+    end
+
+    if maxn(opt) == 0 then
+      return re.zero()
+    end
+
+    local newr = re.option()
+
+    if maxn(opt) == 1 then
+      newr = opt[1]
+    else
+      for j = 1,maxn(opt) do
+        newr:add(opt[j])
+      end
+    end
+
+    if not noZero then
+      newr = re.maybe(newr)
+    end
+
+    return newr
+  end
 } }
 
 -- Matches any of several enclosed regular expressions. r is an optional
@@ -98,7 +144,33 @@ end
 
 local concatMetatable = { __index = {
   type = 'concat',
-  add = function(t, r) ins(t.enc, r) end
+  add = function(t, r) ins(t.enc, r) end,
+  optimize = function(r)
+    local i = 1
+    local opt = {}
+    for j = 1,maxn(r.enc) do
+      opt[j] = r.enc[j]:optimize()
+    end
+
+    while i <= maxn(opt) do
+      while opt[i] ~= nil and opt[i].type == 'zero' do
+        remove(opt, i)
+      end
+      i = i + 1
+    end
+
+    if maxn(opt) == 0 then
+      return re.zero()
+    elseif maxn(opt) == 1 then
+      return opt[1]
+    end
+
+    local newr = re.concat()
+    for j = 1,maxn(opt) do
+      newr:add(opt[j])
+    end
+    return newr
+  end
 } }
 
 -- Matches the concatentation of the enclosed regular expressions. r is an
@@ -114,7 +186,18 @@ function re.concat(r)
 end
 
 local maybeMetatable = { __index = {
-  type = 'maybe'
+  type = 'maybe',
+  optimize = function(r)
+    local opt = r.enc:optimize()
+
+    if opt.type == 'maybe' or opt.type == 'star' then
+      return opt
+    elseif opt.type == 'plus' then
+      return re.star(opt.enc)
+    end
+
+    return re.maybe(opt)
+  end
 } }
 
 -- Matches zero or one repetition of the enclosed regular expression r
@@ -125,7 +208,16 @@ function re.maybe(r)
 end
 
 local starMetatable = { __index = {
-  type = 'star'
+  type = 'star',
+  optimize = function(r)
+    local opt = r.enc:optimize()
+
+    if opt.type == 'maybe' or opt.type == 'star' or opt.type == 'plus' then
+      return re.star(opt.enc)
+    end
+
+    return re.star(opt)
+  end
 } }
 
 -- Matches zero or more repetitions of the enclosed regular expression r
@@ -136,7 +228,18 @@ function re.star(r)
 end
 
 local plusMetatable = { __index = {
-  type = 'plus'
+  type = 'plus',
+  optimize = function(r)
+    local opt = r.enc:optimize()
+
+    if opt.type == 'maybe' then
+      return re.star(opt.enc)
+    elseif opt.type == 'plus' or opt.type == 'star' then
+      return opt
+    end
+
+    return re.plus(opt)
+  end
 } }
 
 -- Matches one or more repetitions of the enclosed regular expression r
@@ -147,7 +250,20 @@ function re.plus(r)
 end
 
 local numMetatable = { __index = {
-  type = 'num'
+  type = 'num',
+  optimize = function(r)
+    local opt = r.enc:optimize()
+
+    if opt.type == 'maybe' then
+      return re.num(opt.enc, nil, r.max)
+    elseif opt.type == 'star' then
+      return opt
+    elseif opt.type == 'plus' then
+      return re.num(opt.enc, r.min, nil)
+    end
+
+    return re.num(opt, r.min, r.max)
+  end
 } }
 
 -- Matches a number of repetitions of the enclosed regular expression r;
@@ -161,7 +277,10 @@ function re.num(r, min, max)
 end
 
 local zeroMetatable = { __index = {
-  type = 'zero'
+  type = 'zero',
+  optimize = function(r)
+    return r
+  end
 } }
 
 -- Matches a zero-length string
@@ -172,7 +291,10 @@ function re.zero()
 end
 
 local parenMetatable = { __index = {
-  type = 'paren'
+  type = 'paren',
+  optimize = function(r)
+    error('paren "regular expression fragment" in an actual tree!')
+  end
 } }
 
 -- Matches nothing; this should only exist on regexStack to delimit a paren

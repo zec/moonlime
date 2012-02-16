@@ -59,5 +59,7 @@ print('header = {' .. x.header .. '}\n')
 for i = 1,table.maxn(x.tokens) do
   print('regexp[' .. i .. ']:')
   limeutil.printRegex(io.stdout, x.tokens[i][1])
+  print('optimizedRegexp[' .. i .. ']:')
+  limeutil.printRegex(io.stdout, x.tokens[i][1]:optimize())
   print('code[' .. i .. ']:\n', x.tokens[i][2])
 end
