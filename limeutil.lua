@@ -305,18 +305,37 @@ function re.paren()
   return x
 end
 
+local function escapeString(s)
+  local x = ''
+  for i = 1,string.len(s) do
+    local c = string.byte(s, i)
+
+    if c == string.byte('\\') then
+      x = x .. '\\\\'
+    elseif c == 10 then
+      x = x .. '\\n'
+    elseif c <= 31 or c >= 127 then
+      x = x .. string.format('\\x%02x', c)
+    else
+      x = x .. string.char(c)
+    end
+  end
+
+  return x
+end
+
 -- Prints a human-readable representation of regular-expression tree r
 -- to file f
 function printRegex(f, r)
   local function treeWalker(f, re, sp)
     if re.type == 'char' then
-      f:write(sp .. 'char: [' .. re.char .. ']\n')
+      f:write(sp .. 'char: [' .. escapeString(re.char) .. ']\n')
     elseif re.type == 'class' then
       f:write(sp .. 'class: ')
       if re.negated then
         f:write('^')
       end
-      f:write('[' .. re.set .. ']\n')
+      f:write('[' .. escapeString(re.set) .. ']\n')
     elseif re.type == 'any' or re.type == 'zero' then
       f:write(sp .. re.type .. '\n')
     elseif re.type == 'maybe' or re.type == 'star' or re.type == 'plus' then

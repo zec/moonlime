@@ -374,6 +374,50 @@ local function readSingleCharRegex(conf, s)
   return true, s
 end
 
+-- Sub-parser for '\' escapes
+local function readEscape(conf, s)
+  -- We know the first character is '\'...
+  local c = string.sub(s, 2, 2)
+  if c == '' then
+    local moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('EOF occurred in middle of regular expression')
+    end
+    s = s .. moreS
+    c = string.sub(s, 2, 2)
+  end
+
+  local re
+
+  if c == 'n' then -- newline
+    re = lu.re.char('\n')
+  else -- literal escape
+    re = lu.re.char(c)
+  end
+
+  if conf.currRegex == nil then
+    conf.currRegex = re
+  else
+    local top = table.remove(conf.regexStack)
+    if top == nil then
+      top = lu.re.concat(conf.currRegex)
+    elseif top.type == 'paren' then
+      table.insert(conf.regexStack, top)
+      top = lu.re.concat(conf.currRegex)
+    elseif top.type == 'option' then
+      table.insert(conf.regexStack, top)
+      top = lu.re.concat(conf.currRegex)
+    else -- top.type == 'concat'
+      top:add(conf.currRegex)
+    end
+    table.insert(conf.regexStack, top)
+
+    conf.currRegex = re
+  end
+
+  return true, string.sub(s, 3, -1)
+end
+
 -- Sub-parser for the '[]' character-class regex fragment
 local function readCharClass(conf, s)
   local done = false
@@ -390,6 +434,7 @@ local function readCharClass(conf, s)
       error('EOF occurred in middle of regular expression')
     end
     s = s .. moreS
+    c = string.sub(s, 1, 1)
   end
 
   if c == '^' then
@@ -398,7 +443,7 @@ local function readCharClass(conf, s)
   end
 
   while not done do
-    local a = string.find(s, ']', 1, true)
+    local a = string.find(s, '[%]\\]')
     if a == nil then
       local moreS = coroutine.yield(false, nil)
       if moreS == nil then
@@ -406,9 +451,29 @@ local function readCharClass(conf, s)
       end
       s = s .. moreS
     else
-      re:add(string.sub(s, 1, a-1))
-      s = string.sub(s, a+1, -1)
-      done = true
+      local stop = string.sub(s, a, a)
+      if stop == ']' then
+        re:add(string.sub(s, 1, a-1))
+        s = string.sub(s, a+1, -1)
+        done = true
+      else -- stop == '\\'
+        re:add(string.sub(s, 1, a-1))
+        local x = string.sub(s, a+1, a+1)
+        if x == '' then
+          local moreS = coroutine.yield(false, nil)
+          if moreS == nil then
+            error('EOF occurred in middle of regular expression')
+          end
+          s = s .. moreS
+          x = string.sub(s, a+1, a+1)
+        end
+        if x == 'n' then
+          re:add('\n')
+        else
+          re:add(x)
+        end
+        s = string.sub(s, a+2, -1)
+      end
     end
   end
 
@@ -625,6 +690,9 @@ local function chooseSubparser(s)
 
   elseif firstByte == '[' then
     return coroutine.create(readCharClass), false
+
+  elseif firstByte == '\\' then
+    return coroutine.create(readEscape), false
 
   -- this could be the start of a code block or part of a regular expression...
   elseif firstByte == '{' then
