@@ -15,6 +15,7 @@ end
 local table = table
 local string = string
 local setmetatable = setmetatable
+local pairs = pairs
 require('limeutil')
 local lu = limeutil
 -- used in debug
@@ -242,6 +243,82 @@ function printNFA(f, fa)
       done[currState] = true
     end
   end
+end
+
+-- The following are some utility routines for operations on sets, where the
+-- sets are represented by tables t with t[x] is truthy iff x is in t
+local function union(a, b)
+  local x = {}
+  for k in pairs(a) do
+    if a[k] then
+      x[k] = true
+    end
+  end
+  for k in pairs(b) do
+    if b[k] then
+      x[k] = true
+    end
+  end
+
+  return x
+end
+
+local function intersect(a, b)
+  local x = {}
+  for k in pairs(a) do
+    if a[k] and b[k] then
+      x[k] = true
+    end
+  end
+
+  return x
+end
+
+local function minus(a, b)
+  local x = {}
+  for k in pairs(a) do
+    if a[k] and not b[k] then
+      x[k] = true
+    end
+  end
+
+  return x
+end
+
+-- Given a set s of non-negative integers, create a reproducible key
+local function mkSetKey(s)
+  local m, k = table.maxn(s), {}
+  for i = 0,m do
+    if s[i] then
+      table.insert(k, '1')
+    else
+      table.insert(k, '0')
+    end
+  end
+
+  return table.concat(k)
+end
+
+-- For a given state s, return a set consisting of the IDs of s and the
+-- states reachable from s with only nil transitions
+local function nilClosure(s)
+  local totalSet = {}
+  local toDoQueue = { s }
+
+  while table.maxn(toDoQueue) > 0 do
+    local r = table.remove(toDoQueue)
+    if not totalSet[r.id] then
+      totalSet[r.id] = true
+      for i = 1,table.maxn(st.transitions) do
+        local trans = st.transitions[i]
+        if trans.cond == nil and not totalSet[trans.dest.id] then
+          table.insert(toDoQueue, trans.dest)
+        end
+      end
+    end
+  end
+
+  return totalSet
 end
 
 return P
