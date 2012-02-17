@@ -14,8 +14,11 @@ end
 -- Imports
 local table = table
 local string = string
+local setmetatable = setmetatable
 require('limeutil')
 local lu = limeutil
+-- used in debug
+--local err = io.stderr
 
 setfenv(1, P)
 
@@ -57,6 +60,7 @@ local function makeNFAfrag(state)
   local x = {}
   x.initState = makeState(state)
   x.finalTrans = {}
+  setmetatable(x, nfaFragMeta)
 
   return x
 end
@@ -173,19 +177,19 @@ end
 
 -- Returns an object that can be used by e.g. regexToNFAfrag as
 -- translate-global state
-local function makeState()
+local function makeGlobalState()
   return { nextId = 0 }
 end
 
 -- Top-level routine to turn a list of regex trees into an NFA; returns the
 -- initial state of the NFA.
 function regexCompile(reList)
-  local globalState = makeState()
-  local initState = makeState(globalState)
+  local gState = makeGlobalState()
+  local initState = makeState(gState)
 
   for j = 1,table.maxn(reList) do
-    local frag = regexToNFAfrag(globalState, reList[j])
-    local endState = makeState(globalState, j)
+    local frag = regexToNFAfrag(gState, reList[j])
+    local endState = makeState(gState, j)
 
     for k = 1,table.maxn(frag.finalTrans) do
       frag.finalTrans[k].dest = endState
