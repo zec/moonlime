@@ -177,19 +177,6 @@ local function makeState()
   return { nextId = 0 }
 end
 
--- Turns a regex tree into an NFA fragment with end-state precedence doneNum;
--- returns the initial state of the NFA.
-local function regexCompile(state, re, doneNum)
-  local frag = regexToNFAfrag(state, re)
-  local endState = makeState(state, doneNum)
-
-  for j = 1,table.maxn(frag.finalTrans) do
-    frag.finalTrans[j].dest = endState
-  end
-
-  return frag.initState
-end
-
 -- Top-level routine to turn a list of regex trees into an NFA; returns the
 -- initial state of the NFA.
 function regexCompile(reList)
