@@ -71,4 +71,4 @@ local regexes = {}
 for i = 1,table.maxn(x.tokens) do
   table.insert(regexes, x.tokens[i][1])
 end
-limefa.printNFA(io.stdout, regexes)
+limefa.printNFA(io.stdout, limefa.regexCompile(regexes))
