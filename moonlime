@@ -48,6 +48,7 @@ end
 
 require('limeparse')
 require('limeutil')
+require('limefa')
 
 local ok, x = pcall(limeparse.readFile, fin)
 if not ok then
@@ -61,5 +62,13 @@ for i = 1,table.maxn(x.tokens) do
   limeutil.printRegex(io.stdout, x.tokens[i][1])
   print('optimizedRegexp[' .. i .. ']:')
   limeutil.printRegex(io.stdout, x.tokens[i][1]:optimize())
+  print('partialNFA[' .. i .. ']:')
+  limefa.printNFA(io.stdout, limefa.regexCompile({x.tokens[i][1]}))
   print('code[' .. i .. ']:\n', x.tokens[i][2])
 end
+print('totalNFA:')
+local regexes = {}
+for i = 1,table.maxn(x.tokens) do
+  table.insert(regexes, x.tokens[i][1])
+end
+limefa.printNFA(io.stdout, regexes)

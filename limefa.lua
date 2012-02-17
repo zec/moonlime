@@ -65,6 +65,14 @@ local function makeNFAfrag(state)
   return x
 end
 
+local anySet = ''
+for i = 1,255 do
+  local c = string.char(i)
+  if c ~= '\n' then
+    anySet = anySet .. c
+  end
+end
+
 -- Turn a regex tree into an NFA fragment; returns the NFA fragment. state
 -- is the translate-global state; re is the tree.
 local function regexToNFAfrag(state, re)
@@ -92,12 +100,7 @@ local function regexToNFAfrag(state, re)
     frag:addFinal(t)
 
   elseif re.type == 'any' then
-    local set = ''
-    for i = 1,255 do
-      local c = string.char(i)
-      if c ~= '\n' then set = set .. c end
-    end
-    frag:addFinal(makeTransition(frag.initState, set, nil))
+    frag:addFinal(makeTransition(frag.initState, anySet, nil))
 
   elseif re.type == 'option' then
     for j = 1,table.maxn(re.enc) do
@@ -199,6 +202,46 @@ function regexCompile(reList)
   end
 
   return initState
+end
+
+-- Prints out a representation of an NFA (with initial state fa) to file f.
+function printNFA(f, fa)
+  local notDone = { fa }
+  local done = {}
+
+  f:write('[initial state]\n')
+  while table.maxn(notDone) > 0 do
+    local currState = table.remove(notDone, 1)
+    if not done[currState] then
+      f:write(string.format('State %d:\n', currState.id))
+      if currState.doneNum ~= nil then
+        f:write(string.format('  doneNum = %d\n', currState.doneNum))
+      end
+      for i = 1,table.maxn(currState.transitions) do
+        local x, y = currState.transitions[i].cond,
+                     currState.transitions[i].dest
+
+        if y == nil then
+          y = { id = -1 }
+        end
+
+        if x == nil then
+          x = '[nil]'
+        elseif x == anySet then
+          x = '{ANY}'
+        else
+          x = lu.escapeString(x)
+        end
+
+        f:write(string.format('  tr[%d]: %s -> %d\n', i, x, y.id))
+
+        if y.id ~= -1 and not done[y] then
+          table.insert(notDone, y)
+        end
+      end
+      done[currState] = true
+    end
+  end
 end
 
 return P

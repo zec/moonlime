@@ -305,7 +305,7 @@ function re.paren()
   return x
 end
 
-local function escapeString(s)
+function escapeString(s)
   local x = ''
   for i = 1,string.len(s) do
     local c = string.byte(s, i)
