@@ -18,6 +18,8 @@ local tonumber = tonumber
 local table = table
 require('limeutil')
 local lu = limeutil
+-- used in debug
+--local err = io.stderr
 
 setfenv(1, P)
 
@@ -638,24 +640,29 @@ end
 
 -- Sub-parser for actions associated with regexes
 local function readCodeAction(conf, s)
-  local re, code
+  local re, reNext, code
   -- No regex or finding oneself nested inside a stack of subregexes is
   -- an error condition
   if conf.currRegex == nil and conf.regexStack[1] == nil then
     error('A code block without a regex!')
-  elseif table.maxn(conf.regexStack) > 1 then
-    error('A code block inside a regex!')
   end
 
-  if conf.regexStack[1] ~= nil then
-    re = table.remove(conf.regexStack)
-    if re.type == 'option' and conf.currRegex == nil then
-      re:add(lu.re.zero())
-    else
-      re:add(conf.currRegex)
-    end
+  if conf.currRegex ~= nil then
+    re, reNext = conf.currRegex, table.remove(conf.regexStack)
   else
-    re = conf.currRegex
+    local x = table.remove(conf.regexStack)
+    if x.type == 'option' then
+      x:add(lu.re.zero())
+    end
+    re, reNext = x, table.remove(conf.regexStack)
+  end
+
+  while reNext ~= nil do
+    if re.type == 'paren' or reNext.type == 'paren' then
+      error('A code block inside a regex!')
+    end
+    reNext:add(re)
+    re, reNext = reNext, table.remove(conf.regexStack)
   end
 
   code, s = readCode(s)
