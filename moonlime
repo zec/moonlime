@@ -49,6 +49,7 @@ end
 require('limeparse')
 require('limeutil')
 require('limefa')
+require('limegen')
 
 local ok, x = pcall(limeparse.readFile, fin)
 if not ok then
@@ -74,4 +75,16 @@ end
 local nfa = limefa.regexCompile(regexes)
 limefa.printFA(io.stdout, nfa)
 print('totalDFA:')
-limefa.printFA(io.stdout, limefa.NFAtoDFA(nfa))
+local dfa = limefa.NFAtoDFA(nfa)
+limefa.printFA(io.stdout, dfa)
+
+local fout = io.stdout
+if output ~= nil then
+  local errMsg
+  fout, errMsg = io.open(output, 'w')
+  if fout == nil then
+    io.stderr:write(arg[0] .. ': Error: ' .. errMsg)
+    os.exit(1)
+  end
+end
+limegen.write(x, dfa, fout)

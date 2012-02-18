@@ -333,7 +333,7 @@ end
 
 -- Given a finite automaton with initial state fa, return a table with all
 -- reachable states in the FA, indexed by their ID
-local function makeTable(fa)
+function makeTable(fa)
   local toDoQueue = { fa }
   local tbl = {}
 
