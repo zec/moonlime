@@ -63,7 +63,7 @@ for i = 1,table.maxn(x.tokens) do
   print('optimizedRegexp[' .. i .. ']:')
   limeutil.printRegex(io.stdout, x.tokens[i][1]:optimize())
   print('partialNFA[' .. i .. ']:')
-  limefa.printNFA(io.stdout, limefa.regexCompile({x.tokens[i][1]}))
+  limefa.printFA(io.stdout, limefa.regexCompile({x.tokens[i][1]}))
   print('code[' .. i .. ']:\n', x.tokens[i][2])
 end
 print('totalNFA:')
@@ -71,4 +71,7 @@ local regexes = {}
 for i = 1,table.maxn(x.tokens) do
   table.insert(regexes, x.tokens[i][1])
 end
-limefa.printNFA(io.stdout, limefa.regexCompile(regexes))
+local nfa = limefa.regexCompile(regexes)
+limefa.printFA(io.stdout, nfa)
+print('totalDFA:')
+limefa.printFA(io.stdout, limefa.NFAtoDFA(nfa))

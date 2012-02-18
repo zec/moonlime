@@ -16,6 +16,7 @@ local table = table
 local string = string
 local setmetatable = setmetatable
 local pairs = pairs
+local HUGE = math.huge
 require('limeutil')
 local lu = limeutil
 -- used in debug
@@ -205,8 +206,9 @@ function regexCompile(reList)
   return initState
 end
 
--- Prints out a representation of an NFA (with initial state fa) to file f.
-function printNFA(f, fa)
+-- Prints out a representation of a finite automaton (with initial state fa)
+-- to file f.
+function printFA(f, fa)
   local notDone = { fa }
   local done = {}
 
@@ -285,6 +287,14 @@ local function minus(a, b)
   return x
 end
 
+local function setSize(a)
+  local n = 0
+  for k in pairs(a) do
+    n = n + 1
+  end
+  return n
+end
+
 -- Given a set s of non-negative integers, create a reproducible key
 local function mkSetKey(s)
   local m, k = table.maxn(s), {}
@@ -309,8 +319,8 @@ local function nilClosure(s)
     local r = table.remove(toDoQueue)
     if not totalSet[r.id] then
       totalSet[r.id] = true
-      for i = 1,table.maxn(st.transitions) do
-        local trans = st.transitions[i]
+      for i = 1,table.maxn(r.transitions) do
+        local trans = r.transitions[i]
         if trans.cond == nil and not totalSet[trans.dest.id] then
           table.insert(toDoQueue, trans.dest)
         end
@@ -319,6 +329,135 @@ local function nilClosure(s)
   end
 
   return totalSet
+end
+
+-- Given a finite automaton with initial state fa, return a table with all
+-- reachable states in the FA, indexed by their ID
+local function makeTable(fa)
+  local toDoQueue = { fa }
+  local tbl = {}
+
+  while table.maxn(toDoQueue) > 0 do
+    local r = table.remove(toDoQueue)
+    if not tbl[r.id] then
+      tbl[r.id] = r
+      for i = 1,table.maxn(r.transitions) do
+        local dest = r.transitions[i].dest
+        if not tbl[dest.id] then
+          table.insert(toDoQueue, dest)
+        end
+      end
+    end
+  end
+
+  return tbl
+end
+
+-- Given an NFA with initial state fa, return a DFA that matches the same
+-- strings, with doneNum for each end state in the DFA equal to the least value
+-- of doneNum for corresponding NFA end states. This uses the classic powerset
+-- method for constructing the DFA.
+function NFAtoDFA(fa)
+  local initSet = nilClosure(fa)
+  -- A list of state-sets known to be reachable but which haven't been
+  -- examined yet
+  local toDoQueue = { initSet }
+  -- The set of state-sets (in key string form) that have been processed
+  local done = {}
+  -- A table of DFA states, indexed by the NFA state-set they represent
+  local dfaStates = {}
+  -- The NFA states, indexed by state ID
+  local nfa = makeTable(fa)
+
+  local gState = makeGlobalState()
+
+  local function setToState(set)
+    local minDoneNum = HUGE -- assumed to be > than the # of regexes per file
+    local setKey = mkSetKey(set)
+
+    if dfaStates[setKey] ~= nil then
+      return dfaStates[setKey], setKey
+    end
+
+    for k in pairs(set) do
+      if set[k] and nfa[k].doneNum ~= nil and nfa[k].doneNum < minDoneNum then
+        minDoneNum = nfa[k].doneNum
+      end
+    end
+
+    if minDoneNum == HUGE then
+      minDoneNum = nil
+    end
+
+    local state = makeState(gState, minDoneNum)
+    dfaStates[setKey] = state
+    return state, setKey
+  end
+
+  -- Compute all nil-closures just once
+  local nilClosures = {}
+  for k,v in pairs(nfa) do
+    nilClosures[k] = nilClosure(v)
+  end
+
+  while table.maxn(toDoQueue) > 0 do
+    local set = table.remove(toDoQueue)
+    local state, stateKey = setToState(set)
+
+    if not done[stateKey] then
+      local transitions = {}
+
+      -- Handle the zero byte
+      local zeroTransSet = {}
+      for k in pairs(set) do
+        local st = nfa[k]
+        for i = 1,table.maxn(st.transitions) do
+          local trans = st.transitions[i]
+          if trans.cond ~= nil and string.find(trans.cond, '%z') ~= nil then
+            zeroTransSet = union(zeroTransSet, nilClosures[trans.dest.id])
+          end
+        end
+      end
+
+      if setSize(zeroTransSet) > 0 then
+        local zeroTransState, zeroTransKey = setToState(zeroTransSet)
+        transitions[zeroTransKey] = { zeroTransSet, zeroTransState, '\0' }
+      end
+
+      -- Handle non-zero bytes
+      for i = 1,255 do
+        local transSet, ch = {}, string.char(i)
+        for k in pairs(set) do
+          local st = nfa[k]
+          for j = 1,table.maxn(st.transitions) do
+            local trans = st.transitions[j]
+            if trans.cond ~= nil and string.find(trans.cond, ch, 1, true) ~= nil then
+              transSet = union(transSet, nilClosures[trans.dest.id])
+            end
+          end
+        end
+
+        if setSize(transSet) > 0 then
+          local transState, transKey = setToState(transSet)
+          if transitions[transKey] == nil then
+            transitions[transKey] = { transSet, transState }
+          end
+          table.insert(transitions[transKey], ch)
+        end
+      end
+
+      for k,v in pairs(transitions) do
+        if not done[k] then
+          table.insert(toDoQueue, v[1])
+        end
+          makeTransition(state, table.concat(v, '', 3), v[2])
+      end
+
+      done[stateKey] = true
+    end
+  end
+
+  return setToState(initSet)
 end
 
 return P
