@@ -407,25 +407,8 @@ function NFAtoDFA(fa)
     if not done[stateKey] then
       local transitions = {}
 
-      -- Handle the zero byte
-      local zeroTransSet = {}
-      for k in pairs(set) do
-        local st = nfa[k]
-        for i = 1,table.maxn(st.transitions) do
-          local trans = st.transitions[i]
-          if trans.cond ~= nil and string.find(trans.cond, '%z') ~= nil then
-            zeroTransSet = union(zeroTransSet, nilClosures[trans.dest.id])
-          end
-        end
-      end
-
-      if setSize(zeroTransSet) > 0 then
-        local zeroTransState, zeroTransKey = setToState(zeroTransSet)
-        transitions[zeroTransKey] = { zeroTransSet, zeroTransState, '\0' }
-      end
-
-      -- Handle non-zero bytes
-      for i = 1,255 do
+      -- Handle each individual byte value
+      for i = 0,255 do
         local transSet, ch = {}, string.char(i)
         for k in pairs(set) do
           local st = nfa[k]
