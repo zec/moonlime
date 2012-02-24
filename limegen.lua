@@ -211,16 +211,7 @@ function write(inf, fa, f)
   local ml_y = 'moonlime_trans ml_y[] = {\n'
   local function mkBitset(str)
     local y = '{'
-    if string.find(str, '%z') ~= nil then
-      y = y .. '1|'
-    end
-    for i = 1,7 do
-      if string.find(str, string.char(i), 1, true) then
-        y = y .. (2^i) .. '|'
-      end
-    end
-    y = y .. '0,'
-    for i = 8,248,8 do
+    for i = 0,248,8 do
       local n = 0
       for j = 0,7 do
         if string.find(str, string.char(i+j), 1, true) then
