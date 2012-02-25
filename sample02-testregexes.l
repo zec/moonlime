@@ -1,34 +1,38 @@
 %prefix Sample
 
-a { 1; }
+%header {
+#include <stdio.h>
+}
 
-bc { 2; }
+a { printf("1\n"); }
 
-[abc] { 3; }
+bc { printf("2\n"); }
 
-[abc]? { 4; }
+[abc] { printf("3\n"); }
 
-a?a { 5; }
+[abc]? { printf("4\n"); }
 
-(xa|by)q { 6; }
+a?a { printf("5\n"); }
 
-.+(a(a|b|c)[def])?.q { 7; }
+(xa|by)q { printf("6\n"); }
 
-a?b*c+ { 8; }
+.+(a(a|b|c)[def])?.q { printf("7\n"); }
 
-m(iss)+ipi { 9; }
+a?b*c+ { printf("8\n"); }
 
-z[^qua]y { 10; }
+m(iss)+ipi { printf("9\n"); }
+
+z[^qua]y { printf("10\n"); }
 
 /* The following is legal, if redundantly convoluted. */
-i*?{14,15} { 11; }
+i*?{14,15} { printf("11\n"); }
 
-cd{,20}e { 12; }
+cd{,20}e { printf("12\n"); }
 
-fg{7}h { 13; }
+fg{7}h { printf("13\n"); }
 
-ij{18,}k { 14; }
+ij{18,}k { printf("14\n"); }
 
-(|abc)(de||fg)(hij|kl|) { 15; }
+(|abc)(de||fg)(hij|kl|) { printf("15\n"); }
 
-a|bc|d { 16; }
+a|bc|d { printf("16\n"); }

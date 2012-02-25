@@ -1,19 +1,23 @@
 %prefix Sample
 
-a { 1; }
+%header {
+#include <stdio.h>
+}
 
-b|c { 2; }
+a { printf("1\n"); }
 
-[bcde] { 3; }
+b|c { printf("2\n"); }
 
-[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ] { 4; }
+[bcde] { printf("3\n"); }
 
-a(bc) { 5; }
+[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ] { printf("4\n"); }
 
-bc|def { 6; }
+a(bc) { printf("5\n"); }
 
-a(bc)?d { 7; }
+bc|def { printf("6\n"); }
 
-a*b?c+d { 8; }
+a(bc)?d { printf("7\n"); }
 
-a{2,3}b{,4}c{3} { 9; }
+a*b?c+d { printf("8\n"); }
+
+a{2,3}b{,4}c{3} { printf("9\n"); }
