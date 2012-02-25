@@ -1,4 +1,5 @@
 SAMPLES=sample01-hexdump sample02-testregexes sample03-testNFAregexes
+SAMPLES+= sample04-teststates
 CC=gcc
 LUAFILES=moonlime limeparse.lua limefa.lua limegen.lua limeutil.lua
 
