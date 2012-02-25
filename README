@@ -1,1 +1,4 @@
 A lexer-generator, inspired by Lex and Lemon, written in Lua.
+
+Unless otherwise specified in the file, all files are licensed under the terms
+of an MIT-type licence, whose text can be found in the file LICENSE.
