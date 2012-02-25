@@ -78,6 +78,8 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 
     ms->alloc = alloc;
     ms->unalloc = unalloc;
+
+    return ms;
 }
 
 void %PREFIX%Destroy( void *lexer )
