@@ -23,8 +23,6 @@ setfenv(1, P)
 
 local preamble = [[
 
-#include <stdio.h>
-#include <ctype.h>
 #include <stdlib.h>
 
 typedef struct {
