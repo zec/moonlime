@@ -400,7 +400,18 @@ directives = {
                               function(c, s, d) c.a = 2 return s end },
   ['%header'] = { makeError('bleh'), makeCode('header') },
   ['%prefix'] = { makeError('nothing after %prefix'),
-                  makeToken('prefix', CToken) }
+                  makeToken('prefix', CToken) },
+  ['%state'] = { makeError('nothing after %state'),
+                 function(c, s, d)
+                   local a,b = readToken(s, CToken)
+                   if c.initState == nil then
+                     c.initState = a
+                   end
+                   c.states[a] = true
+                   return b
+                 end },
+  ['%initstate'] = { makeError('nothing after %initstate'),
+                     makeToken('initState', CToken) }
 }
 
 -- Sub-parser for the single-character and 'any' (.) regular expression

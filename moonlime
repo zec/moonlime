@@ -63,6 +63,12 @@ fin:close()
 
 if showDebugInfo then
   print(x)
+  print('initState = ' .. tostring(x.initState))
+  print('states = {')
+  for k,v in pairs(x.states) do
+    print('', k)
+  end
+  print('}')
   print('header = {' .. x.header .. '}\n')
   for i = 1,table.maxn(x.tokens) do
     print('regexp[' .. i .. ']:')

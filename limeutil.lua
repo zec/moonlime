@@ -31,6 +31,8 @@ function makeFileData()
                     -- should only be of types 'concat' and 'option'!
   x.tokens = {} -- array of (token regex, action) pairs, in the order they
                 -- appear in the file
+  x.states = {} -- table with start-state names as keys
+  x.initState = nil -- initial start state of lexer
 
   return x
 end
