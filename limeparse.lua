@@ -185,6 +185,56 @@ local function makeError(s)
   end
 end
 
+-- Read in a token (a C identifier, a number, etc.), with the token specified
+-- with the pattern pat, possibly with whitespace in front. Called with the
+-- read-in but currently unparsed part of the file in s and the pattern in
+-- pat, and returns the token as well as the new read-in but unparsed part.
+local function readToken(s, pat)
+  local a,b
+  local moreS
+
+  -- Skip over leading whitespace
+  a,b = string.find(s, nWHSP)
+  while a == nil do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('Looking for token but got EOF!')
+    end
+
+    s = moreS
+    a,b = string.find(s, nWHSP)
+  end
+
+  s = string.sub(s, a, -1)
+
+  -- Read in stuff until we reach either EOF or something after the token.
+  pat = '^' .. pat
+  a,b = string.find(s, pat)
+
+  while b == nil or b == string.len(s) do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      a,b = string.find(s, pat)
+      if a == nil then
+        error('token not found')
+      else
+        return string.sub(s, 1, b), string.sub(s, b+1, -1)
+      end
+    end
+
+    s = s .. moreS
+    a,b = string.find(s, pat)
+
+    if a == nil then
+      error('token not found')
+    end
+
+    if b < string.len(s) then
+      return string.sub(s, 1, b), string.sub(s, b+1, -1)
+    end
+  end
+end
+
 -- Read a chunk of C/C++ code delimited with braces, possibly with whitespace
 -- in front. Called with the read-in but currently unparsed part of the file,
 -- and returns the C code as a string, as well as the unparsed stuff afterward.
@@ -328,6 +378,14 @@ end
 local function makeCode(field)
   return function(c, s, d)
     local a, b = readCode(s)
+    c[field] = a
+    return b
+  end
+end
+
+local function makeToken(field, pattern)
+  return function(c, s, d)
+    local a, b = readToken(s, pattern)
     c[field] = a
     return b
   end
