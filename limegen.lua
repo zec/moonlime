@@ -23,6 +23,8 @@ setfenv(1, P)
 
 local preamble = [[
 
+#include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 
 typedef struct {
@@ -55,6 +57,8 @@ local genericLexer = [[
 
 %HEADER%
 
+#define fprintf(...)
+
 void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 {
     moonlime_state *ms;
@@ -79,6 +83,7 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
     ms->alloc = alloc;
     ms->unalloc = unalloc;
 
+fprintf(stderr, "lexer at %p\n", ms);
     return ms;
 }
 
@@ -103,6 +108,10 @@ static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
     int curr_trans, end_trans, c_idx, c_mask, next_state, i;
     char *new_buf;
 
+if(isprint(c))
+fprintf(stderr, "run_char(%p, \'%c\', %d, %d)\n", ms, c, add_to_buf, len);
+else
+fprintf(stderr, "run_char(%p, %d, %d, %d)\n", ms, c, add_to_buf, len);
     curr_trans = ml_x[ms->curr_state].trans_start;
     end_trans = ml_x[ms->curr_state].trans_end;
 
@@ -141,6 +150,17 @@ static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
     return 0;
 }
 
+static void reset_state(moonlime_state *ms)
+{
+    int i;
+
+    for(i = ms->last_done_len; i < ms->string_len; ++i)
+        ms->buf[i - ms->last_done_len] = ms->buf[i];
+    ms->string_len -= ms->last_done_len;
+    ms->last_done_len = ms->last_done_num = 0;
+    ms->curr_state = INIT_STATE;
+}
+
 int %PREFIX%Read( void *lexer, char *input, size_t len )
 {
     int done_relexing, i;
@@ -150,34 +170,72 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     if(ms == NULL || ms->is_in_error)
         return 0;
 
+fprintf(stderr, "%PREFIX%Read(%p, %p, %d)\n", lexer, input, len);
+
+    if(len == 0) { /* Signifies EOF */
+
+        if(ms->string_len == 0)
+            return 1;
+
+        if(ms->last_done_num == 0) {
+            ms->is_in_error = 1;
+            return 0;
+        }
+
+        moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
+        reset_state(ms);
+
+        while(ms->string_len > 0) {
+fprintf(stderr, "eof len=%d\n", ms->string_len);
+
+            for(i = 0; i < ms->string_len; ++i) {
+                if(!run_char(ms, ms->buf[i], 0, i+1) || i == ms->string_len - 1) {
+                    if(ms->is_in_error || ms->last_done_num == 0) {
+                        ms->is_in_error = 1;
+                        return 0;
+                    }
+
+fprintf(stderr, "hi %d %d\n", ms->string_len, ms->last_done_len);
+                    moonlime_action(ms->last_done_num, ms->buf,
+                                    ms->last_done_len);
+                    reset_state(ms);
+fprintf(stderr, "bye %d %d\n", ms->string_len, ms->last_done_len);
+                    break;
+                }
+            }
+        }
+
+        return 1;
+    }
+
     while(input < end) {
         if(!run_char(ms, *input, 1, ms->string_len + 1)) { /* past a pattern */
             if(ms->is_in_error)
+{
+fprintf(stderr, "Error: random!\n");
                 return 0;
+}
             if(ms->last_done_num == 0) { /* no pattern matches buf */
+fprintf(stderr, "Error: no match\n");
                 ms->is_in_error = 1;
                 return 0;
             }
             moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
+            reset_state(ms);
 
             done_relexing = 0;
             while(!done_relexing) {
 relex_loop:
-                for(i = ms->last_done_len; i < ms->string_len; ++i)
-                    ms->buf[i - ms->last_done_len] = ms->buf[i];
-                ms->string_len -= ms->last_done_len;
-                ms->last_done_len = ms->last_done_num = 0;
-                ms->curr_state = INIT_STATE;
-
                 i = 0;
                 while(i < ms->string_len) {
-                    if(!run_char(ms, ms->buf[i], 0, i)) {
+                    if(!run_char(ms, ms->buf[i], 0, i+1)) {
                         if(!ms->is_in_error && ms->last_done_num == 0)
                             ms->is_in_error = 1;
                         if(ms->is_in_error)
                             return 0;
                         moonlime_action(ms->last_done_num, ms->buf,
                                         ms->last_done_len);
+                        reset_state(ms);
                         goto relex_loop;
                     }
                     ++i;
@@ -191,6 +249,8 @@ relex_loop:
 
     return 1;
 }
+
+#undef fprintf
 
 static void moonlime_action(int done_num, const char *yytext, size_t yylen)
 {
@@ -228,10 +288,10 @@ function write(inf, fa, f)
 
   for k,v in pairs(state_tbl) do
     ml_x = ml_x .. '[' .. k .. '] = {'
-    if v.done_num == nil then
+    if v.doneNum == nil then
       ml_x = ml_x .. '0,' .. next_trans .. ','
     else
-      ml_x = ml_x .. v.done_num .. ',' .. next_trans .. ','
+      ml_x = ml_x .. v.doneNum .. ',' .. next_trans .. ','
     end
 
     for i = 1,table.maxn(v.transitions) do

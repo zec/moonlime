@@ -41,6 +41,12 @@ int main(int argc, char **argv)
         }
     }
 
+    if(!SampleRead(lexer, NULL, 0)) {
+        fputs("An error occurred during lexing near EOF!\n", stderr);
+        SampleDestroy(lexer);
+        return 1;
+    }
+
     SampleDestroy(lexer);
     return 0;
 }
