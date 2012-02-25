@@ -9,6 +9,7 @@ package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
 
 local argc, i = table.maxn(arg), 1
 local input, output
+local showDebugInfo = false
 
 -- Options processing
 while i <= argc do
@@ -20,6 +21,8 @@ while i <= argc do
 
     i = i + 1
     output = arg[i]
+  elseif arg[i] == '-d' then
+    showDebugInfo = true
   else
     if input ~= nil then
       io.stderr:write(arg[0] .. ': Error: Multiple input files specified\n')
@@ -57,27 +60,38 @@ if not ok then
   os.exit(1)
 end
 fin:close()
-print(x)
-print('header = {' .. x.header .. '}\n')
-for i = 1,table.maxn(x.tokens) do
-  print('regexp[' .. i .. ']:')
-  limeutil.printRegex(io.stdout, x.tokens[i][1])
-  print('optimizedRegexp[' .. i .. ']:')
-  limeutil.printRegex(io.stdout, x.tokens[i][1]:optimize())
-  print('partialNFA[' .. i .. ']:')
-  limefa.printFA(io.stdout, limefa.regexCompile({x.tokens[i][1]}))
-  print('code[' .. i .. ']:\n', x.tokens[i][2])
+
+if showDebugInfo then
+  print(x)
+  print('header = {' .. x.header .. '}\n')
+  for i = 1,table.maxn(x.tokens) do
+    print('regexp[' .. i .. ']:')
+    limeutil.printRegex(io.stdout, x.tokens[i][1])
+    print('optimizedRegexp[' .. i .. ']:')
+    limeutil.printRegex(io.stdout, x.tokens[i][1]:optimize())
+    print('partialNFA[' .. i .. ']:')
+    limefa.printFA(io.stdout, limefa.regexCompile({x.tokens[i][1]}))
+    print('code[' .. i .. ']:\n', x.tokens[i][2])
+  end
 end
-print('totalNFA:')
+
 local regexes = {}
 for i = 1,table.maxn(x.tokens) do
   table.insert(regexes, x.tokens[i][1])
 end
 local nfa = limefa.regexCompile(regexes)
-limefa.printFA(io.stdout, nfa)
-print('totalDFA:')
+
+if showDebugInfo then
+  print('totalNFA:')
+  limefa.printFA(io.stdout, nfa)
+end
+
 local dfa = limefa.NFAtoDFA(nfa)
-limefa.printFA(io.stdout, dfa)
+
+if showDebugInfo then
+  print('totalDFA:')
+  limefa.printFA(io.stdout, dfa)
+end
 
 local fout = io.stdout
 if output ~= nil then
