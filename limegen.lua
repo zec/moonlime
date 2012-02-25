@@ -181,7 +181,7 @@ relex_loop:
                     ++i;
                 }
 
-                done_lexing = 1;
+                done_relexing = 1;
             }
         }
         ++input;
@@ -192,7 +192,7 @@ relex_loop:
 
 static void moonlime_action(int done_num, const char *yytext, size_t yylen)
 {
-    switch(num_regex) {
+    switch(done_num) {
 ]]
 
 local postamble = [[
@@ -241,8 +241,8 @@ function write(inf, fa, f)
     ml_x = ml_x .. next_trans .. '},\n'
   end
 
-  f:write(ml_x, '}\n')
-  f:write(ml_y, '}\n')
+  f:write(ml_x, '};\n\n')
+  f:write(ml_y, '};\n\n')
 
   local lexer = string.gsub(genericLexer, '%%PREFIX%%', inf.prefix)
   lexer = string.gsub(lexer, '%%HEADER%%', inf.header)
