@@ -1,3 +1,5 @@
+%prefix Sample
+
 a { 1; }
 
 bc { 2; }

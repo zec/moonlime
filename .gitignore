@@ -1,4 +1,7 @@
 /tmp*
+*.o
+/sample[0-9]*
+!/sample[0-9]*.l
 
 # Editor temporary files
 *~*
