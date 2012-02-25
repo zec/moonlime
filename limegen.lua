@@ -109,9 +109,9 @@ static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
     char *new_buf;
 
 if(isprint(c))
-fprintf(stderr, "run_char(%p, \'%c\', %d, %d)\n", ms, c, add_to_buf, len);
+fprintf(stdout, "run_char(%p, \'%c\', %d, %d)\n", ms, c, add_to_buf, len);
 else
-fprintf(stderr, "run_char(%p, %d, %d, %d)\n", ms, c, add_to_buf, len);
+fprintf(stdout, "run_char(%p, %d, %d, %d)\n", ms, c, add_to_buf, len);
     curr_trans = ml_x[ms->curr_state].trans_start;
     end_trans = ml_x[ms->curr_state].trans_end;
 
@@ -170,7 +170,7 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     if(ms == NULL || ms->is_in_error)
         return 0;
 
-fprintf(stderr, "%PREFIX%Read(%p, %p, %d)\n", lexer, input, len);
+fprintf(stdout, "%PREFIX%Read(%p, %p, %d)\n", lexer, input, len);
 
     if(len == 0) { /* Signifies EOF */
 
@@ -222,10 +222,13 @@ fprintf(stderr, "Error: no match\n");
             }
             moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
             reset_state(ms);
+fprintf(stdout, "xx %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
 
             done_relexing = 0;
-            while(!done_relexing) {
-relex_loop:
+            /* Re-lex remaining part of the buffer */
+            while(ms->string_len > 0 && !done_relexing) {
+fprintf(stdout, "yy %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
+
                 i = 0;
                 while(i < ms->string_len) {
                     if(!run_char(ms, ms->buf[i], 0, i+1)) {
@@ -233,15 +236,18 @@ relex_loop:
                             ms->is_in_error = 1;
                         if(ms->is_in_error)
                             return 0;
+fprintf(stdout, "zz %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
                         moonlime_action(ms->last_done_num, ms->buf,
                                         ms->last_done_len);
                         reset_state(ms);
-                        goto relex_loop;
+fprintf(stdout, "ww %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
+                        goto next_relex;
                     }
                     ++i;
                 }
 
                 done_relexing = 1;
+next_relex:     ;
             }
         }
         ++input;
@@ -311,7 +317,7 @@ function write(inf, fa, f)
   f:write(lexer)
 
   for i = 1,table.maxn(inf.tokens) do
-    f:write('case ', i, ': {\n', inf.tokens[i][2], '\n}\n')
+    f:write('case ', i, ': {\n', inf.tokens[i][2], '\n} break;\n')
   end
 
   f:write(postamble)
