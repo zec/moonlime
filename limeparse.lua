@@ -29,6 +29,7 @@ blockSize = 8192
 -- Commonly-used patters
 local WHSP = '[ \t\n]'
 local nWHSP = '[^ \t\n]'
+local CToken = '[a-zA-Z_][a-zA-Z0-9_]*'
 
 -- The file parser is structure as a top-level function (readFile) that
 -- chooses a sub-parser based on the initial bytes of a section (regexp,
@@ -179,12 +180,6 @@ local function readDirective(conf, s)
   return true, s
 end
 
-local function makeError(s)
-  return function()
-    error(s, 1)
-  end
-end
-
 -- Read in a token (a C identifier, a number, etc.), with the token specified
 -- with the pattern pat, possibly with whitespace in front. Called with the
 -- read-in but currently unparsed part of the file in s and the pattern in
@@ -233,6 +228,8 @@ local function readToken(s, pat)
       return string.sub(s, 1, b), string.sub(s, b+1, -1)
     end
   end
+
+  return string.sub(s, 1, b), string.sub(s, b+1, -1)
 end
 
 -- Read a chunk of C/C++ code delimited with braces, possibly with whitespace
@@ -375,6 +372,12 @@ local function readCode(s)
   return blk, s
 end
 
+local function makeError(s)
+  return function()
+    error(s, 1)
+  end
+end
+
 local function makeCode(field)
   return function(c, s, d)
     local a, b = readCode(s)
@@ -395,7 +398,9 @@ directives = {
   ['%testdirective']= { makeError('1'), makeError('2') },
   ['%othertestdirective'] = { function(c, d) c.a = 1 end,
                               function(c, s, d) c.a = 2 return s end },
-  ['%header'] = { makeError('bleh'), makeCode('header') }
+  ['%header'] = { makeError('bleh'), makeCode('header') },
+  ['%prefix'] = { makeError('nothing after %prefix'),
+                  makeToken('prefix', CToken) }
 }
 
 -- Sub-parser for the single-character and 'any' (.) regular expression

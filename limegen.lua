@@ -53,7 +53,9 @@ typedef struct {
 
 local genericLexer = [[
 
-void * %sInit( void * (*alloc)(size_t), void (*unalloc)(void *) )
+%HEADER%
+
+void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 {
     moonlime_state *ms;
 
@@ -78,7 +80,7 @@ void * %sInit( void * (*alloc)(size_t), void (*unalloc)(void *) )
     ms->unalloc = unalloc;
 }
 
-void %sDestroy( void *lexer )
+void %PREFIX%Destroy( void *lexer )
 {
     moonlime_state *ms = lexer;
 
@@ -137,7 +139,7 @@ static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
     return 0;
 }
 
-int %sRead( void *lexer, char *input, size_t len )
+int %PREFIX%Read( void *lexer, char *input, size_t len )
 {
     int done_relexing, i;
     char *end = input + len;
@@ -187,8 +189,6 @@ relex_loop:
 
     return 1;
 }
-
-%s
 
 static void moonlime_action(int done_num, const char *yytext, size_t yylen)
 {
@@ -244,7 +244,9 @@ function write(inf, fa, f)
   f:write(ml_x, '}\n')
   f:write(ml_y, '}\n')
 
-  f:write(string.format(genericLexer, 'a', 'a', 'a', inf.header))
+  local lexer = string.gsub(genericLexer, '%%PREFIX%%', inf.prefix)
+  lexer = string.gsub(lexer, '%%HEADER%%', inf.header)
+  f:write(lexer)
 
   for i = 1,table.maxn(inf.tokens) do
     f:write('case ', i, ': {\n', inf.tokens[i][2], '\n}\n')

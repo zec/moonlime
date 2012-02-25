@@ -2,6 +2,8 @@
 #include <stdio.h>
 }
 
+%prefix Sample
+
 (.|\n){16} {
   printf("%02x %02x %02x %02x %02x %02x %02x %02x  "
          "%02x %02x %02x %02x %02x %02x %02x %02x\n",

@@ -23,6 +23,8 @@ setfenv(1, P)
 
 function makeFileData()
   local x = {}
+  x.prefix = 'Lexer' -- prefix put in front of generated functions,
+                     -- exported structures
   x.header = '' -- code put at the top of the generated file
   x.currRegex = nil -- current regular-expression fragment being worked on
   x.regexStack = {} -- current stack of regular-expression fragments;
