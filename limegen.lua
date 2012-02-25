@@ -57,8 +57,6 @@ local genericLexer = [[
 
 %HEADER%
 
-#define fprintf(...)
-
 void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 {
     moonlime_state *ms;
@@ -83,7 +81,6 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
     ms->alloc = alloc;
     ms->unalloc = unalloc;
 
-fprintf(stderr, "lexer at %p\n", ms);
     return ms;
 }
 
@@ -108,10 +105,6 @@ static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
     int curr_trans, end_trans, c_idx, c_mask, next_state, i;
     char *new_buf;
 
-if(isprint(c))
-fprintf(stdout, "run_char(%p, \'%c\', %d, %d)\n", ms, c, add_to_buf, len);
-else
-fprintf(stdout, "run_char(%p, %d, %d, %d)\n", ms, c, add_to_buf, len);
     curr_trans = ml_x[ms->curr_state].trans_start;
     end_trans = ml_x[ms->curr_state].trans_end;
 
@@ -170,10 +163,7 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     if(ms == NULL || ms->is_in_error)
         return 0;
 
-fprintf(stdout, "%PREFIX%Read(%p, %p, %d)\n", lexer, input, len);
-
     if(len == 0) { /* Signifies EOF */
-
         if(ms->string_len == 0)
             return 1;
 
@@ -186,20 +176,17 @@ fprintf(stdout, "%PREFIX%Read(%p, %p, %d)\n", lexer, input, len);
         reset_state(ms);
 
         while(ms->string_len > 0) {
-fprintf(stderr, "eof len=%d\n", ms->string_len);
-
             for(i = 0; i < ms->string_len; ++i) {
-                if(!run_char(ms, ms->buf[i], 0, i+1) || i == ms->string_len - 1) {
+                if(!run_char(ms, ms->buf[i], 0, i+1) ||
+                   i == ms->string_len - 1) {
                     if(ms->is_in_error || ms->last_done_num == 0) {
                         ms->is_in_error = 1;
                         return 0;
                     }
 
-fprintf(stderr, "hi %d %d\n", ms->string_len, ms->last_done_len);
                     moonlime_action(ms->last_done_num, ms->buf,
                                     ms->last_done_len);
                     reset_state(ms);
-fprintf(stderr, "bye %d %d\n", ms->string_len, ms->last_done_len);
                     break;
                 }
             }
@@ -211,24 +198,17 @@ fprintf(stderr, "bye %d %d\n", ms->string_len, ms->last_done_len);
     while(input < end) {
         if(!run_char(ms, *input, 1, ms->string_len + 1)) { /* past a pattern */
             if(ms->is_in_error)
-{
-fprintf(stderr, "Error: random!\n");
                 return 0;
-}
             if(ms->last_done_num == 0) { /* no pattern matches buf */
-fprintf(stderr, "Error: no match\n");
                 ms->is_in_error = 1;
                 return 0;
             }
             moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
             reset_state(ms);
-fprintf(stdout, "xx %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
 
-            done_relexing = 0;
             /* Re-lex remaining part of the buffer */
+            done_relexing = 0;
             while(ms->string_len > 0 && !done_relexing) {
-fprintf(stdout, "yy %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
-
                 i = 0;
                 while(i < ms->string_len) {
                     if(!run_char(ms, ms->buf[i], 0, i+1)) {
@@ -236,18 +216,17 @@ fprintf(stdout, "yy %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->strin
                             ms->is_in_error = 1;
                         if(ms->is_in_error)
                             return 0;
-fprintf(stdout, "zz %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
+
                         moonlime_action(ms->last_done_num, ms->buf,
                                         ms->last_done_len);
                         reset_state(ms);
-fprintf(stdout, "ww %d %d %d\n", ms->last_done_num, ms->last_done_len, ms->string_len);
-                        goto next_relex;
+                        break;
                     }
                     ++i;
                 }
 
-                done_relexing = 1;
-next_relex:     ;
+                if(i == ms->string_len)
+                    done_relexing = 1;
             }
         }
         ++input;
