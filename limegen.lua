@@ -16,6 +16,8 @@ local pairs = pairs
 local string = string
 require('limefa')
 local limefa = limefa
+-- dbg
+local err = io.stderr
 
 -- Make the package table this file's global environment
 -- (for safety and ease of declaration)
@@ -334,9 +336,13 @@ function write(inf, fa, f, fheader)
   f:write(ml_st_defs, '\n')
   f:write('#define ML_MAX_STATE ', startStateNum - 1, '\n')
 
-  local lexer = string.gsub(genericLexer, '%%PREFIX%%', inf.prefix)
-  lexer = string.gsub(lexer, '%%HEADER%%', inf.header)
-  lexer = string.gsub(lexer, '%%TOP%%', inf.topCode)
+  local function constFunc(a)
+    return function() return a end
+  end
+
+  local lexer = string.gsub(genericLexer, '%%PREFIX%%', constFunc(inf.prefix))
+  lexer = string.gsub(lexer, '%%HEADER%%', constFunc(inf.header))
+  lexer = string.gsub(lexer, '%%TOP%%', constFunc(inf.topCode))
   f:write(lexer)
 
   for i = 1,table.maxn(inf.tokens) do
@@ -345,8 +351,9 @@ function write(inf, fa, f, fheader)
 
   f:write(postamble)
 
-  local headerfile = string.gsub(genericHeader, '%%PREFIX%%', inf.prefix)
-  headerfile = string.gsub(headerfile, '%%HEADER%%', inf.header)
+  local headerfile = string.gsub(genericHeader, '%%PREFIX%%',
+                                 constFunc(inf.prefix))
+  headerfile = string.gsub(headerfile, '%%HEADER%%', constFunc(inf.header))
   fheader:write(headerfile)
 end
 
