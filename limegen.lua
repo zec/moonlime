@@ -258,9 +258,23 @@ local postamble = [[
 }
 ]]
 
+local genericHeader = [[
+#ifndef ML_%PREFIX%_HEADER
+#define ML_%PREFIX%_HEADER
+
+%HEADER%
+
+
+void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) );
+void %PREFIX%Destroy( void *lexer );
+int %PREFIX%Read( void *lexer, char *input, size_t len );
+
+#endif
+]]
+
 -- Writes out the C code corresponding to the parsed-file object inf and
--- the table of DFAs fa to file f
-function write(inf, fa, f)
+-- the table of DFAs fa to file f, and a header file to fheader
+function write(inf, fa, f, fheader)
   f:write(preamble)
   local next_trans = 0
   local state_tbl = limefa.makeSuperTable(fa)
@@ -330,6 +344,10 @@ function write(inf, fa, f)
   end
 
   f:write(postamble)
+
+  local headerfile = string.gsub(genericHeader, '%%PREFIX%%', inf.prefix)
+  headerfile = string.gsub(headerfile, '%%HEADER%%', inf.header)
+  fheader:write(headerfile)
 end
 
 return P

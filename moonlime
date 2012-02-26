@@ -8,8 +8,8 @@
 package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
 
 local argc, i = table.maxn(arg), 1
-local input, output
-local showDebugInfo = false
+local input, output, header
+local showDebugInfo, makeHeader = false, false
 
 -- Options processing
 while i <= argc do
@@ -23,6 +23,12 @@ while i <= argc do
     output = arg[i]
   elseif arg[i] == '-d' then
     showDebugInfo = true
+  elseif arg[i] == '-i' then
+    makeHeader = true
+    if arg[i+1] ~= nil then
+      i = i + 1
+      header = arg[i]
+    end
   else
     if input ~= nil then
       io.stderr:write(arg[0] .. ': Error: Multiple input files specified\n')
@@ -33,6 +39,18 @@ while i <= argc do
   end
 
   i = i + 1
+end
+
+-- If no explicit header file name is given, generate one from the C file
+-- name
+if makeHeader and header == nil then
+  if output == nil then
+    header = 'lexer.h'
+  elseif string.sub(output, -2, -1) == '.c' then
+    header = string.sub(output, 1, -3) .. '.h'
+  else
+    header = output .. '.h'
+  end
 end
 
 --print('input = ' .. tostring(input))
@@ -153,5 +171,17 @@ if output ~= nil then
     os.exit(1)
   end
 end
-limegen.write(x, dfas, fout)
+
+local fheader = limeutil.makeNullFile()
+if header ~= nil then
+  local errMsg
+  fheader, errMsg = io.open(header, 'w')
+  if fheader == nil then
+    io.stderr:write(arg[0] .. ': Error: ' .. errMsg)
+    os.exit(1)
+  end
+end
+
+limegen.write(x, dfas, fout, fheader)
 fout:close()
+fheader:close()

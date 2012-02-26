@@ -374,4 +374,17 @@ function printRegex(f, r)
   treeWalker(f, r, '')
 end
 
+local nullFileMetatable = { __index = {
+  read = function(...) return nil end,
+  write = function(...) end,
+  close = function() end
+} }
+
+-- Returns a dummy file object -- like a portable /dev/null
+function makeNullFile()
+  local f = {}
+  setmetatable(f, nullFileMetatable);
+  return f;
+end
+
 return P
