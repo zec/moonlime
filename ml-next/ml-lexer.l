@@ -246,16 +246,72 @@ static char unescape_rx_escape(const char *buf)
 
 // Parenthesis operators
 <MAIN,IN_REGEX> [(] {
+    regex_t *new_rx, *paren;
     ++file_state->regex_nest_depth;
     printf("(\n");
+    if(file_state->curr_rx != NULL) {
+        if(file_state->rx_stack == NULL) {
+            new_rx = mk_concat_rx(0);
+            add_enc_rx(new_rx, file_state->curr_rx);
+            file_state->rx_stack = new_rx;
+        } else switch(file_state->rx_stack->type) {
+          case R_CONCAT:
+          case R_OPTION:
+            add_enc_rx(file_state->rx_stack, file_state->curr_rx);
+            break;
+
+          case R_PAREN:
+            new_rx = mk_concat_rx(0);
+            add_enc_rx(new_rx, file_state->curr_rx);
+            new_rx->next = file_state->rx_stack;
+            file_state->rx_stack = new_rx;
+            break;
+
+          default:
+            fprintf(stderr, "Invalid stack state %d\n",
+                    file_state->rx_stack->type);
+            exit(1);
+        }
+    }
+
+    paren = mk_paren_rx();
+    paren->next = file_state->rx_stack;
+    file_state->rx_stack = paren;
+    file_state->curr_rx = NULL;
     YYSTART(IN_REGEX);
 }
 
 <IN_REGEX> [)] {
+    regex_t *re, *top;
     if(--file_state->regex_nest_depth < 0) {
         fprintf(stderr, "Improper parentheses nesting!\n");
         exit(1);
     }
+
+    re = file_state->curr_rx;
+    top = file_state->rx_stack;
+    if(top != NULL)
+        file_state->rx_stack = top->next;
+
+    while(top != NULL && top->type != R_PAREN) {
+        if(re != NULL)
+            add_enc_rx(top, re);
+        else if(type->type == R_OPTION)
+            add_enc_rx(top, mk_zero_rx());
+
+        re = top;
+        top = file_state->rx_stack;
+        if(top != NULL)
+            file_state->rx_stack = top->next;
+    }
+
+    if(top == NULL) {
+        fputs("Close-paren without open-paren\n", stderr);
+        exit(1);
+    } else
+        free_regex_tree(top);
+
+    file_state->curr_rx = re;
 }
 
 // Character escape
