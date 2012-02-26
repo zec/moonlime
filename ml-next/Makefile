@@ -3,6 +3,7 @@ OBJS=ml-lexer.o main.o utils.o regex.o
 HEADER_DEPS=utils.h regex.h ml-lexer.c
 
 CC=gcc
+CFLAGS=-Wall -Werror
 
 all: $(PROG)
 
@@ -14,7 +15,7 @@ $(PROG): $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
 .c.o: $(HEADER_DEPS)
-	$(CC) -c -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 .l.c:
 	../moonlime $< -o $@ -i
