@@ -38,7 +38,8 @@ typedef struct {
 
 typedef struct {
   int is_in_error;
-  int curr_state;
+  int curr_state; /* state of the DFA */
+  int curr_start_state; /* which DFA to use... */
   int last_done_num;
   int last_done_len;
   size_t string_len;
@@ -68,7 +69,8 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
         return NULL;
 
     ms->is_in_error = 0;
-    ms->curr_state = INIT_STATE;
+    ms->curr_state = init_states[0];
+    ms->curr_start_state = 0;
     ms->last_done_num = 0;
     ms->last_done_len = 0;
 
@@ -96,7 +98,8 @@ void %PREFIX%Destroy( void *lexer )
     ms->unalloc(ms);
 }
 
-static void moonlime_action(int done_num, const char *yytext, size_t yylen);
+static void moonlime_action(int done_num, const char *yytext, size_t yylen,
+                            int *yy_start_state);
 
 static int run_char(moonlime_state *ms, char c, int add_to_buf, int len)
 {
@@ -149,7 +152,7 @@ static void reset_state(moonlime_state *ms)
         ms->buf[i - ms->last_done_len] = ms->buf[i];
     ms->string_len -= ms->last_done_len;
     ms->last_done_len = ms->last_done_num = 0;
-    ms->curr_state = INIT_STATE;
+    ms->curr_state = init_states[ms->curr_start_state];
 }
 
 int %PREFIX%Read( void *lexer, char *input, size_t len )
@@ -170,7 +173,8 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
             return 0;
         }
 
-        moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
+        moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
+                        &(ms->curr_start_state));
         reset_state(ms);
 
         while(ms->string_len > 0) {
@@ -183,7 +187,8 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
                     }
 
                     moonlime_action(ms->last_done_num, ms->buf,
-                                    ms->last_done_len);
+                                    ms->last_done_len,
+                                    &(ms->curr_start_state));
                     reset_state(ms);
                     break;
                 }
@@ -201,7 +206,8 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
                 ms->is_in_error = 1;
                 return 0;
             }
-            moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len);
+            moonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
+                            &(ms->curr_start_state));
             reset_state(ms);
 
             /* Re-lex remaining part of the buffer */
@@ -216,7 +222,8 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
                             return 0;
 
                         moonlime_action(ms->last_done_num, ms->buf,
-                                        ms->last_done_len);
+                                        ms->last_done_len,
+                                        &(ms->curr_start_state));
                         reset_state(ms);
                         break;
                     }
@@ -233,25 +240,34 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     return 1;
 }
 
-static void moonlime_action(int done_num, const char *yytext, size_t yylen)
+#define YYSTART(x) do { *yy_start_state = ML_STATE_ ## x ; } while(0)
+
+static void moonlime_action(int done_num, const char *yytext, size_t yylen,
+                            int *yy_start_state)
 {
     switch(done_num) {
 ]]
 
 local postamble = [[
     }
+
+    if((*yy_start_state < 0) || (*yy_start_state > ML_MAX_STATE))
+        *yy_start_state = 0;
 }
 ]]
 
 -- Writes out the C code corresponding to the parsed-file object inf and
--- the DFA fa to file f
+-- the table of DFAs fa to file f
 function write(inf, fa, f)
   f:write(preamble)
   local next_trans = 0
-  local state_tbl = limefa.makeTable(fa)
-  f:write('#define INIT_STATE ' .. fa.id .. '\n')
+  local state_tbl = limefa.makeSuperTable(fa)
+
   local ml_x = 'moonlime_fa ml_x[' .. (table.maxn(state_tbl) + 1) .. '] = {\n'
   local ml_y = 'moonlime_trans ml_y[] = {\n'
+  local ml_st = 'int init_states[] = {\n'
+  local ml_st_defs = ''
+
   local function mkBitset(str)
     local y = '{'
     for i = 0,248,8 do
@@ -284,8 +300,23 @@ function write(inf, fa, f)
     ml_x = ml_x .. next_trans .. '},\n'
   end
 
+  ml_st = ml_st .. fa[inf.initState].id .. ',\n'
+  ml_st_defs = '#define ML_STATE_' .. inf.initState .. ' 0\n'
+  local startStateNum = 1
+  for k,v in pairs(inf.states) do
+    if k ~= inf.initState then
+      ml_st = ml_st .. fa[k].id .. ',\n'
+      ml_st_defs = ml_st_defs .. '#define ML_STATE_' .. k
+                   .. ' ' .. startStateNum ..'\n'
+      startStateNum = startStateNum + 1
+    end
+  end
+
   f:write(ml_x, '};\n\n')
   f:write(ml_y, '};\n\n')
+  f:write(ml_st, '};\n\n')
+  f:write(ml_st_defs, '\n')
+  f:write('#define ML_MAX_STATE ', startStateNum - 1, '\n')
 
   local lexer = string.gsub(genericLexer, '%%PREFIX%%', inf.prefix)
   lexer = string.gsub(lexer, '%%HEADER%%', inf.header)

@@ -125,7 +125,7 @@ for k,v in pairs(x.states) do
   local regexes = {}
   for i = 1,table.maxn(x.tokens) do
     if x.tokens[i][3][k] then
-      table.insert(regexes, x.tokens[i][1])
+      regexes[i] = x.tokens[i][1]
     end
   end
   nfas[k] = limefa.regexCompile(regexes)
@@ -153,5 +153,5 @@ if output ~= nil then
     os.exit(1)
   end
 end
-limegen.write(x, dfa, fout)
+limegen.write(x, dfas, fout)
 fout:close()

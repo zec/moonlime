@@ -192,7 +192,7 @@ function regexCompile(reList)
   local gState = makeGlobalState()
   local initState = makeState(gState)
 
-  for j = 1,table.maxn(reList) do
+  for j in pairs(reList) do
     local frag = regexToNFAfrag(gState, reList[j])
     local endState = makeState(gState, j)
 
@@ -331,11 +331,9 @@ local function nilClosure(s)
   return totalSet
 end
 
--- Given a finite automaton with initial state fa, return a table with all
--- reachable states in the FA, indexed by their ID
-function makeTable(fa)
+-- See makeTable() for description
+local function addToTable(fa, tbl)
   local toDoQueue = { fa }
-  local tbl = {}
 
   while table.maxn(toDoQueue) > 0 do
     local r = table.remove(toDoQueue)
@@ -350,6 +348,23 @@ function makeTable(fa)
     end
   end
 
+  return tbl
+end
+
+-- Given a finite automaton with initial state fa, return a table with all
+-- reachable states in the FA, indexed by their ID
+function makeTable(fa)
+  return addToTable(fa, {})
+end
+
+-- Given a table t with finite-automaton initial states as values, return a
+-- table with all reachable states in the FAs indexed by their ID. Assumes
+-- all the DFAs have disjoint sets of state IDs.
+function makeSuperTable(t)
+  local tbl = {}
+  for k,v in pairs(t) do
+    addToTable(v, tbl)
+  end
   return tbl
 end
 
