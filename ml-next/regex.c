@@ -258,8 +258,87 @@ void free_regex_tree_impl(regex_t *rx, const char *fname, int line)
         free_regex_tree_impl(rx->data.num.enc, fname, line);
         break;
 
-      default: ;
+      default:
+        ;
     }
 
     free(rx);
+}
+
+static void print_escaped_char(FILE *f, int c)
+{
+    if(c == '\n')
+        fputs("\\n", f);
+    else if(c == '\\' || c == '\'')
+        fprintf(f, "\\%c", c);
+    else if(c < 0x20 || c >= 0x7f)
+        fprintf(f, "\\x%02x", 0xff & c);
+    else
+        fputc(c, f);
+}
+
+static void print_regex_tree_int(FILE *f, regex_t *rx, size_t depth)
+{
+    size_t i;
+    int j;
+    regex_type t;
+
+    for(i = 0; i < depth; ++i)
+        fputc(' ', f);
+
+    if(rx == NULL) {
+        fputs("[NULL]\n", f);
+        return;
+    }
+
+    t = rx->type;
+
+    switch(t) {
+      case R_CHAR:
+        fputs("char: \'", f);
+        print_escaped_char(f, rx->data.c);
+        fputs("\'\n", f);
+        break;
+
+      case R_CLASS:
+        fprintf(f, "class%s: [", (rx->data.cls.is_inverted) ? " [inv]" : "");
+        for(i = 0; i < CLASS_SZ; ++i) {
+            for(j = 0; j < ML_UINT_BIT; ++j)
+                if(rx->data.cls.set[i] & (1 << j))
+                    print_escaped_char(f, j + ML_UINT_BIT * i);
+        }
+        break;
+
+      case R_ANY:
+      case R_ZERO:
+      case R_PAREN:
+        fputs((t == R_ANY) ? "any\n" : (t == R_ZERO) ? "zero\n" : "paren\n",
+              f);
+        break;
+
+      case R_OPTION:
+      case R_CONCAT:
+        fputs((t == R_OPTION) ? "option:\n" : "concat\n", f);
+        for(i = 0; i < rx->data.list.n_enc; ++i)
+            print_regex_tree_int(f, rx->data.list.enc[i], depth+1);
+        break;
+
+      case R_MAYBE:
+      case R_STAR:
+      case R_PLUS:
+        fputs((t == R_MAYBE) ? "maybe\n" : (t == R_STAR) ? "star\n"
+                                                         : "plus\n", f);
+        print_regex_tree_int(f, rx->data.enc, depth+1);
+        break;
+
+      case R_NUM:
+        fprintf(f, "num[%d,%d]:\n", rx->data.num.min, rx->data.num.max);
+        print_regex_tree_int(f, rx->data.num.enc, depth+1);
+        break;
+    }
+}
+
+void print_regex_tree(FILE *f, regex_t *rx)
+{
+    print_regex_tree_int(f, rx, 0);
 }

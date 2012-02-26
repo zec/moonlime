@@ -28,6 +28,11 @@ typedef enum {
 #include <stdlib.h>
 #endif
 
+#ifndef ML_STDIO_H
+#define ML_STDIO_H
+#include <stdio.h>
+#endif
+
 #ifndef ML_LIMITS_H
 #define ML_LIMITS_H
 #include <limits.h>
@@ -104,5 +109,8 @@ void add_enc_rx_impl(regex_t *rx, regex_t *enc, const char *fname, int line);
 void free_regex_tree_impl(regex_t *rx, const char *fname, int line);
 
 #define free_regex_tree(rx) free_regex_tree_impl((rx), __FILE__, __LINE__)
+
+/* The following prints out a human-readable version of a regex tree: */
+void print_regex_tree(FILE *f, regex_t *rx);
 
 #endif
