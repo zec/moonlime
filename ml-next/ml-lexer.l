@@ -16,12 +16,23 @@
 #include "utils.h"
 #endif
 
+#ifndef ML_REGEX_H
+#include "regex.h"
+#endif
+
 typedef struct {
-    const char *dir_name;
-    int c_nest_depth;
-    int regex_nest_depth;
-    len_string *code;
+    const char *dir_name; /* Name of current directive */
+    int c_nest_depth;     /* Current brace-nesting depth in C code */
+    int regex_nest_depth; /* Current parenthesis-nesting depth in regex */
+    len_string *code;     /* The current chunk of C code */
+
+    regex_t *curr_rx; /* Current regular-expression fragment being worked on */
+    regex_t *rx_stack; /* Stack of regular-expression fragments -- only
+                        * types R_CONCAT, R_OPTION, and R_PAREN should be on
+                        * the stack! */
 } lexer_lexer_state;
+
+void init_lexer_lexer_state(lexer_lexer_state *st);
 
 extern lexer_lexer_state *file_state;
 }
@@ -41,6 +52,17 @@ extern lexer_lexer_state *file_state;
 #define ML_STRING_H
 #include <string.h>
 #endif
+
+void init_lexer_lexer_state(lexer_lexer_state *st)
+{
+    if(st == NULL)
+        return;
+
+    st->dir_name = NULL;
+    st->code = NULL;
+    st->curr_rx = st->rx_stack = NULL;
+    st->regex_nest_depth = st->c_nest_depth = 0;
+}
 
 lexer_lexer_state *file_state;
 }
