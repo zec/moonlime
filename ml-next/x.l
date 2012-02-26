@@ -15,3 +15,5 @@
 %initstate ABC
 
 %prefix XyzLexer
+
+abc { 1; }

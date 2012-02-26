@@ -434,6 +434,7 @@ static char unescape_rx_escape(const char *buf)
 // Code associated with a pattern
 <IN_REGEX> [{] {
     regex_t *re, *next;
+    printf("Start action code\n");
     if(file_state->regex_nest_depth > 0) {
         fprintf(stderr, "Code improperly contained inside parentheses!\n");
         exit(1);
@@ -476,6 +477,7 @@ static char unescape_rx_escape(const char *buf)
     file_state->curr_rx = re;
 
     file_state->dir_name = NULL;
+    file_state->c_nest_depth = 1;
     YYSTART(C_CODE);
 }
 
