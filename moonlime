@@ -135,11 +135,13 @@ for k,v in pairs(x.states) do
   end
 end
 
-local dfa = limefa.NFAtoDFA(nfa)
+local dfas = limefa.NfaSetToDfaSet(nfas)
 
 if showDebugInfo then
-  print('totalDFA:')
-  limefa.printFA(io.stdout, dfa)
+  for k,v in pairs(dfas) do
+    print('totalDFA[' .. k .. ']:')
+    limefa.printFA(io.stdout, v)
+  end
 end
 
 local fout = io.stdout

@@ -353,11 +353,8 @@ function makeTable(fa)
   return tbl
 end
 
--- Given an NFA with initial state fa, return a DFA that matches the same
--- strings, with doneNum for each end state in the DFA equal to the least value
--- of doneNum for corresponding NFA end states. This uses the classic powerset
--- method for constructing the DFA.
-function NFAtoDFA(fa)
+-- See NFAtoDFA() for a summary of what this function does.
+local function NFAtoDFAinternal(fa, gState)
   local initSet = nilClosure(fa)
   -- A list of state-sets known to be reachable but which haven't been
   -- examined yet
@@ -368,8 +365,6 @@ function NFAtoDFA(fa)
   local dfaStates = {}
   -- The NFA states, indexed by state ID
   local nfa = makeTable(fa)
-
-  local gState = makeGlobalState()
 
   local function setToState(set)
     local minDoneNum = HUGE -- assumed to be > than the # of regexes per file
@@ -441,6 +436,28 @@ function NFAtoDFA(fa)
   end
 
   return setToState(initSet)
+end
+
+-- Given an NFA with initial state fa, return a DFA that matches the same
+-- strings, with doneNum for each end state in the DFA equal to the least value
+-- of doneNum for corresponding NFA end states. This uses the classic powerset
+-- method for constructing the DFA.
+function NFAtoDFA(fa)
+  return NFAtoDFAinternal(fa, makeGlobalState())
+end
+
+-- Given a table with arbitrary keys and initial states of NFAs as values,
+-- return a table with the same keys and initial states of DFAs as values,
+-- such that no two of the referenced DFAs have states with the same ID
+-- (allowing all the DFAs to be put into one array eventually).
+function NfaSetToDfaSet(nfaTbl)
+  local gState = makeGlobalState()
+  local dfaTbl = {}
+  for k,v in pairs(nfaTbl) do
+    dfaTbl[k] = NFAtoDFAinternal(v, gState)
+  end
+
+  return dfaTbl
 end
 
 return P
