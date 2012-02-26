@@ -53,7 +53,7 @@ lexer_lexer_state *file_state;
 %state PRE_C_TOKEN
 %state NON_WHSP_IS_ERROR
 
-<MAIN>[%][^ \t\n]+ {
+<MAIN>[%][abcdefghijklmnopqrstuvwxyz]+ {
     if(yylen == 4 && !strncmp(yytext, "%top", yylen)) {
         file_state->dir_name = "top";
         YYSTART(PRE_C_CODE);
@@ -92,6 +92,7 @@ lexer_lexer_state *file_state;
 
 <C_CODE>[{] {
     len_string *x;
+
     ++file_state->c_nest_depth;
     x = lstrcat_s(file_state->code, "{");
     free(file_state->code);
@@ -131,6 +132,7 @@ lexer_lexer_state *file_state;
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
     printf("Directive \'%s\': ", file_state->dir_name);
     fwrite(yytext, 1, yylen, stdout);
+    fputs("\n", stdout);
 
     file_state->dir_name = NULL;
     YYSTART(NON_WHSP_IS_ERROR);

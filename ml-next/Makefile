@@ -1,6 +1,6 @@
 PROG=moonlime
 OBJS=ml-lexer.o main.o utils.o
-HEADERS=utils.h ml-lexer.h
+HEADER_DEPS=utils.h ml-lexer.c
 
 CC=gcc
 
@@ -13,13 +13,11 @@ all: $(PROG)
 $(PROG): $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
-.c.o: $(HEADERS)
+.c.o: $(HEADER_DEPS)
 	$(CC) -c -o $@ $<
 
 .l.c:
 	../moonlime $< -o $@ -i
-
-ml-lexer.h: ml-lexer.c
 
 clean:
 	rm -f $(PROG) ml-lexer.[ch] *.o
