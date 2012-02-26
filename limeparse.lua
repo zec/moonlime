@@ -769,7 +769,7 @@ local function readStartState(conf, s)
 
   for m in string.gmatch(string.sub(s, 2, b-1), '[^,]+') do
     if not string.find(m, '^' .. CToken .. '$') then
-      error('Invalid start state in selector')
+      error('Invalid start state in selector: ' .. s)
     end
 
     conf.currStStates[m] = true
