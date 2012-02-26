@@ -11,13 +11,14 @@
 #include <string.h>
 #endif
 
-static len_string * mk_lstring(size_t len)
+static len_string * mk_lstring(size_t len, const char *fname, int line)
 {
     len_string *ptr = malloc(sizeof(*ptr) + len);
 
     /* Fail fast! */
     if(ptr == NULL) {
-        fputs("Can\'t allocate memory for a len_string!\n", stderr);
+        fprintf(stderr, "%s:%d: Can\'t allocate memory for a len_string!\n",
+                fname, line);
         exit(1);
     }
 
@@ -28,9 +29,9 @@ static len_string * mk_lstring(size_t len)
     return ptr;
 }
 
-len_string * mk_blank_lstring(size_t len)
+len_string * mk_blank_lstring_impl(size_t len, const char *fname, int line)
 {
-    len_string *ptr = mk_lstring(len);
+    len_string *ptr = mk_lstring(len, fname, line);
 
     while(len-- > 0)
         ptr->s[len] = '\0';
@@ -38,9 +39,10 @@ len_string * mk_blank_lstring(size_t len)
     return ptr;
 }
 
-len_string * lstring_dupbuf(size_t len, const char *buf)
+len_string * lstring_dupbuf_impl(size_t len, const char *buf,
+                                 const char *fname, int line)
 {
-    len_string *ptr = mk_lstring(len);
+    len_string *ptr = mk_lstring(len, fname, line);
 
     while(len-- > 0)
         ptr->s[len] = buf[len];
@@ -51,7 +53,8 @@ len_string * lstring_dupbuf(size_t len, const char *buf)
 static const len_string nilstr = { 0, {'\0'} };
 static const char blank_str[] = "";
 
-len_string * lstrcat(const len_string *a, const len_string *b)
+len_string * lstrcat_impl(const len_string *a, const len_string *b,
+                          const char *fname, int line)
 {
     len_string *ptr;
     size_t i, j;
@@ -61,7 +64,7 @@ len_string * lstrcat(const len_string *a, const len_string *b)
     if(b == NULL)
         b = &nilstr;
 
-    ptr = mk_lstring(a->len + b->len);
+    ptr = mk_lstring(a->len + b->len, fname, line);
 
     for(i = 0; i < a->len; i++)
         ptr->s[i] = a->s[i];
@@ -71,7 +74,8 @@ len_string * lstrcat(const len_string *a, const len_string *b)
     return ptr;
 }
 
-len_string * lstrcat_s(const len_string *a, const char *str)
+len_string * lstrcat_s_impl(const len_string *a, const char *str,
+                            const char *fname, int line)
 {
     len_string *ptr;
     size_t i, slen;
@@ -83,7 +87,7 @@ len_string * lstrcat_s(const len_string *a, const char *str)
 
     slen = strlen(str);
 
-    ptr = mk_lstring(a->len + slen);
+    ptr = mk_lstring(a->len + slen, fname, line);
 
     for(i = 0; i < a->len; i++)
         ptr->s[i] = a->s[i];
@@ -92,7 +96,8 @@ len_string * lstrcat_s(const len_string *a, const char *str)
     return ptr;
 }
 
-len_string * lstrcat_buf(const len_string *a, size_t len, const char *buf)
+len_string * lstrcat_buf_impl(const len_string *a, size_t len, const char *buf,
+                              const char *fname, int line)
 {
     len_string *ptr;
     size_t i, j;
@@ -102,7 +107,7 @@ len_string * lstrcat_buf(const len_string *a, size_t len, const char *buf)
     if(buf == NULL)
         len = 0;
 
-    ptr = mk_lstring(a->len + len);
+    ptr = mk_lstring(a->len + len, fname, line);
 
     for(i = 0; i < a->len; i++)
         ptr->s[i] = a->s[i];
@@ -116,8 +121,10 @@ void lstr_fwrite(const len_string *lstr, FILE *f)
 {
     size_t len, nwritten;
 
-    if(lstr == NULL)
+    if(lstr == NULL) {
         fputs("(nil)", f);
+        return;
+    }
 
     len = lstr->len;
 
