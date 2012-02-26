@@ -274,12 +274,59 @@ static char unescape_rx_escape(const char *buf)
 }
 
 // Repetition operators
-<IN_REGEX> [+?*] |
-           \{[0-9]+,?\} |
-           \{[0-9]*,[0-9]+\} {
+<IN_REGEX> [?*+] {
     printf("Repetition: ");
     fwrite(yytext, 1, yylen, stdout);
     printf("\n");
+    if(file_state->curr_rx == NULL) {
+        fputs("Tried to apply repetition to empty regex\n", stderr);
+        exit(1);
+    }
+    switch(yytext[0]) {
+      case '?':
+        file_state->curr_rx = mk_maybe_rx(file_state->curr_rx);
+        break;
+      case '*':
+        file_state->curr_rx = mk_star_rx(file_state->curr_rx);
+        break;
+      case '+':
+        file_state->curr_rx = mk_plus_rx(file_state->curr_rx);
+    }
+}
+
+<IN_REGEX> \{[0-9]+,?\} {
+    int n;
+
+    if(file_state->curr_rx == NULL) {
+        fputs("Tried to apply repetition to empty regex\n", stderr);
+        exit(1);
+    }
+
+    n = (int) strtol(yytext+1, NULL, 10);
+
+    if(yytext[yylen-2] != ',')
+        file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, n);
+    else
+        file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, -1);
+}
+
+<IN_REGEX> \{[0-9]*,[0-9]+\} {
+    int n, m;
+    char *ptr = yytext+1;
+
+    if(file_state->curr_rx == NULL) {
+        fputs("Tried to apply repetition to empty regex\n", stderr);
+        exit(1);
+    }
+
+    if(yytext[1] == ',') {
+        n = -1;
+    } else
+        n = (int) strtol(ptr, &ptr, 10);
+
+    m = (int) strtol(ptr+1, NULL, 10);
+
+    file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, m);
 }
 
 // Code associated with a pattern
