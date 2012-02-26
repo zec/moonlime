@@ -325,7 +325,53 @@ static char unescape_rx_escape(const char *buf)
 
 // Option operator
 <MAIN,IN_REGEX> [|] {
+    regex_t *re, *top, *next;
     printf("|\n");
+    re = file_state->curr_rx;
+    if(re == NULL)
+        re = mk_zero_rx();
+
+    top = file_state->rx_stack;
+    if(top != NULL)
+        file_state->rx_stack = top->next;
+
+    if(top == NULL) {
+        top = mk_option_rx();
+        add_enc_rx(top, re);
+    } else if(top->type == R_OPTION) {
+        add_enc_rx(top, re);
+    } else if(top->type == R_CONCAT) {
+        if(re->type != R_ZERO) {
+            add_enc_rx(top, re);
+        } else
+            free_regex_tree(re);
+
+        next = file_state->rx_stack;
+        if(next != NULL)
+            file_state->rx_stack = next->next;
+
+        if(next != NULL && next->type == R_OPTION) {
+            add_enc_rx(next, top)
+            top = next;
+        } else {
+            if(next != NULL) {
+                file_state->rx_stack = next;
+            }
+            next = mk_option_rx();
+            add_enc_rx(next, top);
+            top = next;
+        }
+    } else { /* top->type == R_PAREN */
+        if(top != NULL)
+            file_state->rx_stack = top;
+        top = mk_option_rx();
+        add_enc_rx(top, re);
+    }
+
+    top->next = file_state->rx_stack;
+    file_state->rx_stack = top;
+    file_state->curr_rx = NULL;
+
     YYSTART(IN_REGEX);
 }
 
