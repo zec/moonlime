@@ -131,9 +131,9 @@ lexer_lexer_state *file_state;
     YYSTART(IN_CHARCLASS);
 }
 
-<IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{1,2})|[^x] {
-    printf((yylen == 2) ? " \'\\%c\'\n" : (yylen == 3) ? " \'\\%c%c\'\n" :
-           " \'\\%c%c%c\'\n", yytext[1], yytext[2], yytext[3]);
+<IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2})|[^x] {
+    printf(yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
+           yytext[1], yytext[2], yytext[3]);
 }
 
 <IN_CHARCLASS> [^\\\]]|\n {
@@ -160,10 +160,9 @@ lexer_lexer_state *file_state;
 }
 
 // Character escape
-<MAIN,IN_REGEX> \\(x[0123456789abcdefABCDEF]{1,2}|[^x]) {
-    printf((yylen == 2) ? "Char \'\\%c\'\n"
-           : (yylen == 3) ? "Char \'\\%c%c\'\n"
-           : "Char \'\\%c%c%c\'\n", yytext[1], yytext[2], yytext[3]);
+<MAIN,IN_REGEX> \\(x[0123456789abcdefABCDEF]{2}|[^x]) {
+    printf((yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
+           yytext[1], yytext[2], yytext[3]);
 
     YYSTART(IN_REGEX);
 }
@@ -264,7 +263,7 @@ lexer_lexer_state *file_state;
 [ \t\n] { ; }
 
 // Catch-all single-character regexes
-<MAIN,IN_REGEX> [^{] {
+<MAIN,IN_REGEX> [^{\\\])?*+] {
     printf("Char \'%c\'\n", yytext[0]);
     YYSTART(IN_REGEX);
 }
