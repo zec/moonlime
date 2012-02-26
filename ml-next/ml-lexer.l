@@ -4,9 +4,13 @@
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms.
  */
 
+%prefix Moonlime
+
 %header {
 /* A lexer for Moonlime lexers.
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms. */
+
+#define ML_ML_LEXER_H
 
 #ifndef ML_UTILS_H
 #include "utils.h"
@@ -39,8 +43,6 @@ extern lexer_lexer_state *file_state;
 
 lexer_lexer_state *file_state;
 }
-
-%prefix Moonlime
 
 %initstate MAIN
 

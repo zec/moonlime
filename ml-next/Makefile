@@ -1,5 +1,5 @@
 PROG=moonlime
-OBJS=utils.o ml-lexer.o
+OBJS=ml-lexer.o main.o utils.o
 HEADERS=utils.h ml-lexer.h
 
 CC=gcc
@@ -11,6 +11,7 @@ all: $(PROG)
 .PRECIOUS: .c
 
 $(PROG): $(OBJS)
+	$(CC) -o $@ $(OBJS)
 
 .c.o: $(HEADERS)
 	$(CC) -c -o $@ $<
