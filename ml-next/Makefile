@@ -1,6 +1,6 @@
 PROG=moonlime
-OBJS=ml-lexer.o main.o utils.o
-HEADER_DEPS=utils.h ml-lexer.c
+OBJS=ml-lexer.o main.o utils.o regex.o
+HEADER_DEPS=utils.h regex.h ml-lexer.c
 
 CC=gcc
 
