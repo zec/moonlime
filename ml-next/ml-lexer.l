@@ -9,7 +9,6 @@
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms. */
 
 #ifndef ML_UTILS_H
-#define ML_UTILS_H
 #include "utils.h"
 #endif
 
@@ -49,7 +48,7 @@ lexer_lexer_state *file_state;
 %state IN_REGEX
 %state C_CODE
 %state PRE_C_CODE
-%state C_TOKEN
+%state PRE_C_TOKEN
 %state NON_WHSP_IS_ERROR
 
 <MAIN>[%][^ \t\n]+ {

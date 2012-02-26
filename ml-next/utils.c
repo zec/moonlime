@@ -6,6 +6,11 @@
 
 #include "utils.h"
 
+#ifndef ML_STRING_H
+#define ML_STRING_H
+#include <string.h>
+#endif
+
 static len_string * mk_lstring(size_t len)
 {
     len_string *ptr = malloc(sizeof(*ptr) + len);
