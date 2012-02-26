@@ -263,7 +263,7 @@ lexer_lexer_state *file_state;
 [ \t\n] { ; }
 
 // Catch-all single-character regexes
-<MAIN,IN_REGEX> [^{\\\])?*+] {
+<MAIN,IN_REGEX> [^{\\\])?*+<] {
     printf("Char \'%c\'\n", yytext[0]);
     YYSTART(IN_REGEX);
 }
