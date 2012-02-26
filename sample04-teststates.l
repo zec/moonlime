@@ -18,11 +18,16 @@ a { printf("an a!\n"); }
 // always skip over whitespace
 [ \t\n] { ; }
 
-/* switch between states */
-p { printf("-> P\n"); YYSTATE(P); }
-q { printf("-> Q\n"); YYSTATE(Q); }
-i { printf("-> INIT\n"); YYSTATE(INIT); }
+/* switch between start-states */
+p { printf("-> P\n"); YYSTART(P); }
+q { printf("-> Q\n"); YYSTART(Q); }
+i { printf("-> INIT\n"); YYSTART(INIT); }
 
 <INIT> b { printf("b\n"); }
 <P> b { printf("B\n"); }
 <Q> b { printf("c\n"); }
+
+<INIT,Q> c { printf("C\n"); }
+c { printf("CCC\n"); }
+
+<P,Q> d { printf("d\n"); }

@@ -33,6 +33,8 @@ function makeFileData()
                 -- appear in the file
   x.states = {} -- table with start-state names as keys
   x.initState = nil -- initial start state of lexer
+  x.currStStates = {} -- table of start states that apply to the current regex;
+                      -- the states are the keys of the table
 
   return x
 end

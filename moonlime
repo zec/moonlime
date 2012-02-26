@@ -71,6 +71,11 @@ if showDebugInfo then
   print('}')
   print('header = {' .. x.header .. '}\n')
   for i = 1,table.maxn(x.tokens) do
+    print('startStates[' .. i .. ']: {')
+    for k,v in pairs(x.tokens[i][3]) do
+      print('  ', k)
+    end
+    print('}')
     print('regexp[' .. i .. ']:')
     limeutil.printRegex(io.stdout, x.tokens[i][1])
     print('optimizedRegexp[' .. i .. ']:')

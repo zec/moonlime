@@ -741,11 +741,40 @@ local function readCodeAction(conf, s)
 
   code, s = readCode(s)
 
-  table.insert(conf.tokens, { re, code })
+  table.insert(conf.tokens, { re, code, conf.currStStates })
 
   conf.currRegex = nil
+  conf.currStStates = {}
 
   return true, s
+end
+
+-- Sub-parser for start-state selector '<...>'
+local function readStartState(conf, s)
+  local a,b,moreS
+  local pat = '^<[^>]*>'
+
+  -- First, read enough to get from the initial '<' to the final '>'
+  a,b = string.find(s, pat)
+  while a == nil do
+    moreS = coroutine.yield(false, nil)
+    if moreS == nil then
+      error('EOF in middle of start-state selector!')
+    end
+
+    s = s .. moreS
+    a,b = string.match(s, pat)
+  end
+
+  for m in string.gmatch(string.sub(s, 2, b-1), '[^,]+') do
+    if not string.find(m, '^' .. CToken .. '$') then
+      error('Invalid start state in selector')
+    end
+
+    conf.currStStates[m] = true
+  end
+
+  return true, string.sub(s, b+1, -1)
 end
 
 -- Based on the first bytes of s, choose a sub-parser to handle the first
@@ -774,6 +803,9 @@ local function chooseSubparser(s)
 
   elseif firstByte == '\\' then
     return coroutine.create(readEscape), false
+
+  elseif firstByte == '<' then
+    return coroutine.create(readStartState), false
 
   -- this could be the start of a code block or part of a regular expression...
   elseif firstByte == '{' then
