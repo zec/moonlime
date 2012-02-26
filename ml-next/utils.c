@@ -1,5 +1,5 @@
 /*
- * utils.h: Random useful things.
+ * utils.c: Random useful things.
  *
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms.
  */
