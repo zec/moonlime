@@ -1,7 +1,8 @@
-
+// This is a comment
 
 %header { a; }
 
+/* This is also a comment */
 %top { b; }
 
 %state ABC

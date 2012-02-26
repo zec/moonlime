@@ -53,6 +53,10 @@ lexer_lexer_state *file_state;
 %state PRE_C_TOKEN
 %state NON_WHSP_IS_ERROR
 
+// Ignore C- and C++-style comments
+<MAIN,IN_REGEX>[/][*]([^*]|[*]+[^*])*[*][/] |
+               [/][/][^\n]*\n { ; }
+
 <MAIN>[%][abcdefghijklmnopqrstuvwxyz]+ {
     if(yylen == 4 && !strncmp(yytext, "%top", yylen)) {
         file_state->dir_name = "top";
