@@ -30,7 +30,7 @@ function makeFileData()
                  -- any generated .h file
   x.currRegex = nil -- current regular-expression fragment being worked on
   x.regexStack = {} -- current stack of regular-expression fragments;
-                    -- should only be of types 'concat' and 'option'!
+                    -- should only be of types 'concat', 'option', and 'paren'!
   x.tokens = {} -- array of (token regex, action) pairs, in the order they
                 -- appear in the file
   x.states = {} -- table with start-state names as keys
