@@ -233,8 +233,6 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     return 1;
 }
 
-#undef fprintf
-
 static void moonlime_action(int done_num, const char *yytext, size_t yylen)
 {
     switch(done_num) {
