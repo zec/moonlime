@@ -433,10 +433,48 @@ static char unescape_rx_escape(const char *buf)
 
 // Code associated with a pattern
 <IN_REGEX> [{] {
+    regex_t *re, *next;
     if(file_state->regex_nest_depth > 0) {
-        fprintf(stderr, "Code improperly contained inside regex!\n");
+        fprintf(stderr, "Code improperly contained inside parentheses!\n");
         exit(1);
     }
+
+    if(file_state->curr_rx == NULL && file_state->rx_stack == NULL) {
+        fputs("A code action without a regex!\n", stderr);
+        exit(1);
+    }
+
+    if(file_state->curr_rx != NULL) {
+        re = file_state->curr_rx;
+        next = file_state->rx_stack;
+        if(next != NULL)
+            file_state->rx_stack = next->next;
+    } else {
+        re = file_state->rx_stack;
+        if(re->type == R_OPTION)
+            add_enc_rx(re, mk_zero_rx());
+        next = re->next;
+        if(next != NULL)
+            file_state->rx_stack = next->next;
+        else
+            file_state->rx_stack = NULL;
+    }
+
+    while(next != NULL) {
+        if(re->type == R_PAREN || next->type == R_PAREN) {
+            fputs("A code action inside a paren sub-regex!\n", stderr);
+            exit(1);
+        }
+
+        add_enc_rx(next, re);
+        re = next;
+        next = file_state->rx_stack;
+        if(next != NULL)
+            file_state->rx_stack = next->next;
+    }
+
+    file_state->curr_rx = re;
+
     file_state->dir_name = NULL;
     YYSTART(C_CODE);
 }
@@ -469,6 +507,10 @@ static char unescape_rx_escape(const char *buf)
             lstr_fwrite(file_state->code, stdout);
             fputs("\n}\n", stdout);
         } else {
+            printf("Pattern:\n");
+            print_regex_tree(stdout, file_state->curr_rx);
+            free_regex_tree(file_state->curr_rx);
+            file_state->curr_rx = NULL;
             printf("Code associated with pattern: {\n");
             lstr_fwrite(file_state->code, stdout);
             fputs("\n}\n", stdout);
