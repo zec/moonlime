@@ -399,6 +399,7 @@ directives = {
   ['%othertestdirective'] = { function(c, d) c.a = 1 end,
                               function(c, s, d) c.a = 2 return s end },
   ['%header'] = { makeError('bleh'), makeCode('header') },
+  ['%top'] = { makeError('bleh'), makeCode('topCode') },
   ['%prefix'] = { makeError('nothing after %prefix'),
                   makeToken('prefix', CToken) },
   ['%state'] = { makeError('nothing after %state'),

@@ -56,6 +56,8 @@ local genericLexer = [[
 
 %HEADER%
 
+%TOP%
+
 void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 {
     moonlime_state *ms;
@@ -320,6 +322,7 @@ function write(inf, fa, f)
 
   local lexer = string.gsub(genericLexer, '%%PREFIX%%', inf.prefix)
   lexer = string.gsub(lexer, '%%HEADER%%', inf.header)
+  lexer = string.gsub(lexer, '%%TOP%%', inf.topCode)
   f:write(lexer)
 
   for i = 1,table.maxn(inf.tokens) do

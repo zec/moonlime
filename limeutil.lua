@@ -25,7 +25,9 @@ function makeFileData()
   local x = {}
   x.prefix = 'Lexer' -- prefix put in front of generated functions,
                      -- exported structures
-  x.header = '' -- code put at the top of the generated file
+  x.topCode = '' -- code put at the top of the generated .c file
+  x.header = ''  -- code put at both the top of the generated .c file and
+                 -- any generated .h file
   x.currRegex = nil -- current regular-expression fragment being worked on
   x.regexStack = {} -- current stack of regular-expression fragments;
                     -- should only be of types 'concat' and 'option'!

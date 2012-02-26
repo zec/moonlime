@@ -1,6 +1,6 @@
 %prefix Sample
 
-%header {
+%top {
 #include <stdio.h>
 }
 

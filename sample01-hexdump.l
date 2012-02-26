@@ -1,4 +1,4 @@
-%header {
+%top {
 #include <stdio.h>
 #define lo(x) ((x) & 0xff)
 }
