@@ -46,6 +46,7 @@ int main(int argc, char **argv)
      * file correctly, not try to do anything with the results, so the
      * following is a little simplified for now.
      */
+    s.regex_nest_depth = 0;
     file_state = &s;
 
     if((f = fopen(argv[1], "r")) == NULL) {
