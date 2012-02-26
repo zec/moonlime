@@ -296,7 +296,7 @@ static char unescape_rx_escape(const char *buf)
     while(top != NULL && top->type != R_PAREN) {
         if(re != NULL)
             add_enc_rx(top, re);
-        else if(type->type == R_OPTION)
+        else if(top->type == R_OPTION)
             add_enc_rx(top, mk_zero_rx());
 
         re = top;
@@ -351,7 +351,7 @@ static char unescape_rx_escape(const char *buf)
             file_state->rx_stack = next->next;
 
         if(next != NULL && next->type == R_OPTION) {
-            add_enc_rx(next, top)
+            add_enc_rx(next, top);
             top = next;
         } else {
             if(next != NULL) {
@@ -414,7 +414,7 @@ static char unescape_rx_escape(const char *buf)
 
 <IN_REGEX> \{[0-9]*,[0-9]+\} {
     int n, m;
-    char *ptr = yytext+1;
+    char *ptr = (char *)(yytext+1);
 
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
