@@ -86,15 +86,53 @@ if showDebugInfo then
   end
 end
 
-local regexes = {}
-for i = 1,table.maxn(x.tokens) do
-  table.insert(regexes, x.tokens[i][1])
+-- The state referenced by %initstate should always exist, even if there is
+-- no corresponding %state directive:
+if x.initState ~= nil then
+  x.states[x.initState] = true
 end
-local nfa = limefa.regexCompile(regexes)
 
-if showDebugInfo then
-  print('totalNFA:')
-  limefa.printFA(io.stdout, nfa)
+-- If there are no states listed, make a default state:
+local anyStates = false
+for k,v in pairs(x.states) do
+  anyStates = true
+  break
+end
+if not anyStates then
+  x.initState = 'DEFAULT'
+  x.states['DEFAULT'] = true
+end
+
+-- Patterns without an explicit start-state selector are assumed to be
+-- active in all start states:
+for i = 1,table.maxn(x.tokens) do
+  local nKeys = 0
+  for k,v in pairs(x.tokens[i][3]) do
+    nKeys = 1
+    break
+  end
+
+  if nKeys == 0 then
+    for k,v in pairs(x.states) do
+      x.tokens[i][3][k] = true
+    end
+  end
+end
+
+-- Make the regexes
+local nfas = {}
+for k,v in pairs(x.states) do
+  local regexes = {}
+  for i = 1,table.maxn(x.tokens) do
+    if x.tokens[i][3][k] then
+      table.insert(regexes, x.tokens[i][1])
+    end
+  end
+  nfas[k] = limefa.regexCompile(regexes)
+  if showDebugInfo then
+    print('totalNFA[' .. k .. ']:')
+    limefa.printFA(io.stdout, nfas[k])
+  end
 end
 
 local dfa = limefa.NFAtoDFA(nfa)
