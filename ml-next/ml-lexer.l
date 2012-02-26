@@ -65,6 +65,73 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
 }
 
 lexer_lexer_state *file_state;
+
+static void add_simple_regex_impl(lexer_lexer_state *st, regex_t *rx,
+                                  const char *fname, int line)
+{
+    regex_t *new_rx;
+
+    if(st == NULL || rx == NULL) {
+        fprintf(stderr, "%s:%d: NULL argument to add_simple_regex\n",
+                fname, line);
+        exit(1);
+    }
+
+    if(st->curr_rx == NULL) {
+        st->curr_rx = rx;
+        return;
+    }
+
+    if(st->rx_stack == NULL) {
+        new_rx = mk_concat_rx(0);
+        add_enc_rx_impl(new_rx, st->curr_rx, fname, line);
+        st->rx_stack = new_rx;
+        st->curr_rx = rx;
+        return;
+    }
+
+    switch(st->rx_stack->type) {
+      case R_CONCAT:
+        add_enc_rx_impl(st->rx_stack, st->curr_rx, fname, line);
+        break;
+
+      case R_OPTION:
+      case R_PAREN:
+        new_rx = mk_concat_rx(0);
+        add_enc_rx_impl(new_rx, st->curr_rx, fname, line);
+        new_rx->next = st->rx_stack;
+        st->rx_stack = new_rx;
+        break;
+
+      default:
+        fprintf(stderr, "%s:%d: Bad type %d on the regex stack\n",
+                fname, line, st->rx_stack->type);
+        exit(1);
+    }
+
+    st->curr_rx = rx;
+}
+
+#define add_simple_regex(st, rx) add_simple_regex_impl((st), (rx), \
+    __FILE__, __LINE__)
+
+static char unescape_rx_escape(const char *buf)
+{
+    char c;
+
+    switch(buf[1]) {
+      case 'x':
+        c = (hex_digits[0xff & buf[2]] << 4) | hex_digits[0xff & buf[3]];
+        break;
+      case 'n':
+        c = '\n';
+        break;
+      default:
+        c = buf[1];
+    }
+
+    return c;
+}
 }
 
 %initstate MAIN
@@ -147,19 +214,29 @@ lexer_lexer_state *file_state;
 // End of selector
 <IN_SELECTOR> [>] { YYSTART(IN_REGEX); }
 
+// Any character
+<MAIN,IN_REGEX> [.] {
+    printf("Any\n");
+    add_simple_regex(file_state, mk_any_rx());
+    YYSTART(IN_REGEX);
+}
+
 // Character class
 <MAIN,IN_REGEX> \[\^? {
     printf("Character class%s:\n", (yylen > 1) ? " (inverted)" : "");
+    add_simple_regex(file_state, mk_char_class_rx(yylen > 1));
     YYSTART(IN_CHARCLASS);
 }
 
 <IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2})|[^x] {
     printf(yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
            yytext[1], yytext[2], yytext[3]);
+    add_to_char_class(file_state->curr_rx, unescape_rx_escape(yytext));
 }
 
 <IN_CHARCLASS> [^\\\]]|\n {
     printf(" \'%c\'\n", yytext[0]);
+    add_to_char_class(file_state->curr_rx, yytext[0]);
 }
 
 <IN_CHARCLASS> \] {
@@ -186,6 +263,7 @@ lexer_lexer_state *file_state;
     printf((yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
            yytext[1], yytext[2], yytext[3]);
 
+    add_simple_regex(file_state, mk_char_rx(unescape_rx_escape(yytext)));
     YYSTART(IN_REGEX);
 }
 
@@ -287,5 +365,6 @@ lexer_lexer_state *file_state;
 // Catch-all single-character regexes
 <MAIN,IN_REGEX> [^{\\\])?*+<] {
     printf("Char \'%c\'\n", yytext[0]);
+    add_simple_regex(file_state, mk_char_rx(yytext[0]));
     YYSTART(IN_REGEX);
 }

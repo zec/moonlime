@@ -53,4 +53,7 @@ len_string * lstrcat_buf_impl(const len_string *a, size_t len, const char *buf,
 /* Writes the contents of *lstr to stream f */
 void lstr_fwrite(const len_string *lstr, FILE *f);
 
+/* A character-to-hexadecimal digit table */
+extern const char hex_digits[256];
+
 #endif
