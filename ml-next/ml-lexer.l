@@ -203,9 +203,11 @@ static char unescape_rx_escape(const char *buf)
         exit(1);
     }
 
+#ifdef LEXER_DBG
     fputs("Start-state selector \"", stdout);
     fwrite(yytext, 1, yylen, stdout);
     fputs("\"\n", stdout);
+#endif
 }
 
 // Start-state separator
@@ -216,31 +218,41 @@ static char unescape_rx_escape(const char *buf)
 
 // Any character
 <MAIN,IN_REGEX> [.] {
+#ifdef LEXER_DBG
     printf("Any\n");
+#endif
     add_simple_regex(file_state, mk_any_rx());
     YYSTART(IN_REGEX);
 }
 
 // Character class
 <MAIN,IN_REGEX> \[\^? {
+#ifdef LEXER_DBG
     printf("Character class%s:\n", (yylen > 1) ? " (inverted)" : "");
+#endif
     add_simple_regex(file_state, mk_char_class_rx(yylen > 1));
     YYSTART(IN_CHARCLASS);
 }
 
 <IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2})|[^x] {
+#ifdef LEXER_DBG
     printf(yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
            yytext[1], yytext[2], yytext[3]);
+#endif
     add_to_char_class(file_state->curr_rx, unescape_rx_escape(yytext));
 }
 
 <IN_CHARCLASS> [^\\\]]|\n {
+#ifdef LEXER_DBG
     printf(" \'%c\'\n", yytext[0]);
+#endif
     add_to_char_class(file_state->curr_rx, yytext[0]);
 }
 
 <IN_CHARCLASS> \] {
+#ifdef LEXER_DBG
     printf("End character class\n");
+#endif
     YYSTART(IN_REGEX);
 }
 
@@ -248,7 +260,9 @@ static char unescape_rx_escape(const char *buf)
 <MAIN,IN_REGEX> [(] {
     regex_t *new_rx, *paren;
     ++file_state->regex_nest_depth;
+#ifdef LEXER_DBG
     printf("(\n");
+#endif
     if(file_state->curr_rx != NULL) {
         if(file_state->rx_stack == NULL) {
             new_rx = mk_concat_rx(0);
@@ -316,8 +330,10 @@ static char unescape_rx_escape(const char *buf)
 
 // Character escape
 <MAIN,IN_REGEX> \\(x[0123456789abcdefABCDEF]{2}|[^x]) {
+#ifdef LEXER_DBG
     printf((yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
            yytext[1], yytext[2], yytext[3]);
+#endif
 
     add_simple_regex(file_state, mk_char_rx(unescape_rx_escape(yytext)));
     YYSTART(IN_REGEX);
@@ -326,7 +342,9 @@ static char unescape_rx_escape(const char *buf)
 // Option operator
 <MAIN,IN_REGEX> [|] {
     regex_t *re, *top, *next;
+#ifdef LEXER_DBG
     printf("|\n");
+#endif
     re = file_state->curr_rx;
     if(re == NULL)
         re = mk_zero_rx();
@@ -377,9 +395,11 @@ static char unescape_rx_escape(const char *buf)
 
 // Repetition operators
 <IN_REGEX> [?*+] {
+#ifdef LEXER_DBG
     printf("Repetition: ");
     fwrite(yytext, 1, yylen, stdout);
     printf("\n");
+#endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
@@ -399,7 +419,9 @@ static char unescape_rx_escape(const char *buf)
 <IN_REGEX> \{[0123456789]+,?\} {
     int n;
 
+#ifdef LEXER_DBG
     printf("rep1\n");
+#endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
@@ -417,7 +439,9 @@ static char unescape_rx_escape(const char *buf)
     int n, m;
     char *ptr = (char *)(yytext+1);
 
+#ifdef LEXER_DBG
     printf("rep2\n");
+#endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
@@ -436,7 +460,9 @@ static char unescape_rx_escape(const char *buf)
 // Code associated with a pattern
 <IN_REGEX> [{] {
     regex_t *re, *next;
+#ifdef LEXER_DBG
     printf("Start action code\n");
+#endif
     if(file_state->regex_nest_depth > 0) {
         fprintf(stderr, "Code improperly contained inside parentheses!\n");
         exit(1);
@@ -544,9 +570,11 @@ static char unescape_rx_escape(const char *buf)
 
 <PRE_C_TOKEN>[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
+#ifdef LEXER_DBG
     printf("Directive \'%s\': ", file_state->dir_name);
     fwrite(yytext, 1, yylen, stdout);
     fputs("\n", stdout);
+#endif
 
     file_state->dir_name = NULL;
     YYSTART(NON_WHSP_IS_ERROR);
@@ -559,7 +587,9 @@ static char unescape_rx_escape(const char *buf)
 
 // Catch-all single-character regexes
 <MAIN,IN_REGEX> [^{\\\])?*+<] {
+#ifdef LEXER_DBG
     printf("Char \'%c\'\n", yytext[0]);
+#endif
     add_simple_regex(file_state, mk_char_rx(yytext[0]));
     YYSTART(IN_REGEX);
 }
