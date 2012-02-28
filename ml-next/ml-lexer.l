@@ -396,9 +396,10 @@ static char unescape_rx_escape(const char *buf)
     }
 }
 
-<IN_REGEX> \{[0-9]+,?\} {
+<IN_REGEX> \{[0123456789]+,?\} {
     int n;
 
+    printf("rep1\n");
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
@@ -412,10 +413,11 @@ static char unescape_rx_escape(const char *buf)
         file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, -1);
 }
 
-<IN_REGEX> \{[0-9]*,[0-9]+\} {
+<IN_REGEX> \{[0123456789]*,[0123456789]+\} {
     int n, m;
     char *ptr = (char *)(yytext+1);
 
+    printf("rep2\n");
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
