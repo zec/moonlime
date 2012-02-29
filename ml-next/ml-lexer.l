@@ -20,8 +20,25 @@
 #include "regex.h"
 #endif
 
+typedef enum {
+    D_NONE,
+    D_TOP,
+    D_HEADER,
+    D_STATE,
+    D_INITSTATE,
+    D_PREFIX
+} directive_kind;
+
+struct pattern_entry {
+    regex_t *rx;
+    len_string *code;
+    struct pattern_entry *next;
+};
+
+typedef struct pattern_entry pat_entry_t;
+
 typedef struct {
-    const char *dir_name; /* Name of current directive */
+    directive_kind dir;   /* Current type of directive being parsed */
     int c_nest_depth;     /* Current brace-nesting depth in C code */
     int regex_nest_depth; /* Current parenthesis-nesting depth in regex */
     len_string *code;     /* The current chunk of C code */
@@ -30,6 +47,18 @@ typedef struct {
     regex_t *rx_stack; /* Stack of regular-expression fragments -- only
                         * types R_CONCAT, R_OPTION, and R_PAREN should be on
                         * the stack! */
+
+    pat_entry_t *phead; /* First element in the list of regular expression/
+                         * code action pairs */
+    pat_entry_t *ptail; /* Final element in the list so far */
+
+    len_string *header; /* Code to appear both in any generated header file and
+                         * the top of the generated lexer */
+    len_string *top;    /* Code to appear at the top of the lexer, after the
+                         * header */
+
+    len_string *initstate; /* Initial start state */
+    len_string *prefix; /* A prefix to use for names in the generated lexer. */
 } lexer_lexer_state;
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
@@ -58,9 +87,10 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     if(st == NULL)
         return;
 
-    st->dir_name = NULL;
-    st->code = NULL;
+    st->dir = D_NONE;
+    st->code = st->header = st->top = st->initstate = st->prefix = NULL;
     st->curr_rx = st->rx_stack = NULL;
+    st->phead = st->ptail = NULL;
     st->regex_nest_depth = st->c_nest_depth = 0;
 }
 
@@ -135,6 +165,28 @@ static char unescape_rx_escape(const char *buf)
 
     return c;
 }
+
+#ifdef LEXER_DBG
+static const char * directive_name(directive_kind dir)
+{
+    switch(dir) {
+      case D_NONE:
+        return "[NONE]";
+      case D_TOP:
+        return "%top";
+      case D_HEADER:
+        return "%header";
+      case D_STATE:
+        return "%state";
+      case D_INITSTATE:
+        return "%initstate";
+      case D_PREFIX:
+        return "%prefix";
+    }
+
+    return NULL;
+}
+#endif
 }
 
 %initstate MAIN
@@ -154,23 +206,23 @@ static char unescape_rx_escape(const char *buf)
 
 <MAIN> [%][abcdefghijklmnopqrstuvwxyz]+ {
     if(yylen == 4 && !strncmp(yytext, "%top", yylen)) {
-        file_state->dir_name = "top";
+        file_state->dir = D_TOP;
         YYSTART(PRE_C_CODE);
 
     } else if(yylen == 7 && !strncmp(yytext, "%header", yylen)) {
-        file_state->dir_name = "header";
+        file_state->dir = D_HEADER;
         YYSTART(PRE_C_CODE);
 
     } else if(yylen == 6 && !strncmp(yytext, "%state", yylen)) {
-        file_state->dir_name = "state";
+        file_state->dir = D_STATE;
         YYSTART(PRE_C_TOKEN);
 
     } else if(yylen == 10 && !strncmp(yytext, "%initstate", yylen)) {
-        file_state->dir_name = "initstate";
+        file_state->dir = D_INITSTATE;
         YYSTART(PRE_C_TOKEN);
 
     } else if(yylen == 7 && !strncmp(yytext, "%prefix", yylen)) {
-        file_state->dir_name = "prefix";
+        file_state->dir = D_PREFIX;
         YYSTART(PRE_C_TOKEN);
 
     } else {
@@ -507,7 +559,7 @@ static char unescape_rx_escape(const char *buf)
 
     file_state->curr_rx = re;
 
-    file_state->dir_name = NULL;
+    file_state->dir = D_NONE;
     file_state->c_nest_depth = 1;
     YYSTART(C_CODE);
 }
@@ -535,23 +587,45 @@ static char unescape_rx_escape(const char *buf)
     len_string *x;
 
     if(--file_state->c_nest_depth == 0) {
-        if(file_state->dir_name != NULL) {
-            printf("Directive %s: {\n", file_state->dir_name);
-            lstr_fwrite(file_state->code, stdout);
-            fputs("\n}\n", stdout);
-        } else {
+        switch(file_state->dir) {
+          case D_NONE:
             printf("Pattern:\n");
             print_regex_tree(stdout, file_state->curr_rx);
             free_regex_tree(file_state->curr_rx);
             file_state->curr_rx = NULL;
             printf("Code associated with pattern: {\n");
             lstr_fwrite(file_state->code, stdout);
+            free(file_state->code);
             fputs("\n}\n", stdout);
+            break;
+
+          case D_HEADER:
+            printf("Header: {\n");
+            lstr_fwrite(file_state->code, stdout);
+            fputs("\n}\n", stdout);
+
+            if(file_state->header != NULL)
+                free(file_state->header);
+            file_state->header = file_state->code;
+            break;
+
+          case D_TOP:
+            printf("Top: {\n");
+            lstr_fwrite(file_state->code, stdout);
+            fputs("\n}\n", stdout);
+
+            if(file_state->top != NULL)
+                free(file_state->top);
+            file_state->top = file_state->code;
+            break;
+
+          default:
+            fprintf(stderr, __FILE__ ":%d: invalid directive with code\n",
+                    __LINE__);
+            exit(1);
         }
 
-        file_state->dir_name = NULL;
-
-        free(file_state->code);
+        file_state->dir = D_NONE;
         file_state->code = NULL;
         YYSTART(MAIN);
     } else {
@@ -574,12 +648,36 @@ static char unescape_rx_escape(const char *buf)
 <PRE_C_TOKEN>[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
 #ifdef LEXER_DBG
-    printf("Directive \'%s\': ", file_state->dir_name);
+    printf("Directive \'%s\': ", directive_name(file_state->dir));
     fwrite(yytext, 1, yylen, stdout);
     fputs("\n", stdout);
 #endif
 
-    file_state->dir_name = NULL;
+    switch(file_state->dir) {
+      case D_STATE:
+        printf("%%state directive: ");
+        fwrite(yytext, 1, yylen, stdout);
+        fputs("\n[NOTE: need to implement list of start states]\n", stdout);
+        break;
+
+      case D_INITSTATE:
+        if(file_state->initstate != NULL)
+            free(file_state->initstate);
+        file_state->initstate = lstring_dupbuf(yylen, yytext);
+        break;
+
+      case D_PREFIX:
+        if(file_state->prefix != NULL)
+            free(file_state->prefix);
+        file_state->prefix = lstring_dupbuf(yylen, yytext);
+        break;
+
+      default:
+        fprintf(stderr, __FILE__ ":%d: Given invalid directive!\n", __LINE__);
+        exit(1);
+    }
+
+    file_state->dir = D_NONE;
     YYSTART(NON_WHSP_IS_ERROR);
 }
 

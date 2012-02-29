@@ -43,7 +43,7 @@ len_string * lstrcat_buf_impl(const len_string *a, size_t len, const char *buf,
 
 /* Generally, one uses the following macros for ease of debugging: */
 #define mk_blank_lstring(len) mk_blank_lstring_impl((len), __FILE__, __LINE__)
-#define lstring_dupbuf(len, buf) mk_lstring_dupbuf_impl((len), (buf), \
+#define lstring_dupbuf(len, buf) lstring_dupbuf_impl((len), (buf), \
     __FILE__, __LINE__)
 #define lstrcat(a, b) lstrcat_impl((a), (b), __FILE__, __LINE__)
 #define lstrcat_s(a, str) lstrcat_s_impl((a), (str), __FILE__, __LINE__)
