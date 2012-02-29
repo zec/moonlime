@@ -51,6 +51,7 @@ typedef struct {
     pat_entry_t *phead; /* First element in the list of regular expression/
                          * code action pairs */
     pat_entry_t *ptail; /* Final element in the list so far */
+    size_t npats;       /* Number of elements in the list */
 
     len_string *header; /* Code to appear both in any generated header file and
                          * the top of the generated lexer */
@@ -92,6 +93,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->curr_rx = st->rx_stack = NULL;
     st->phead = st->ptail = NULL;
     st->regex_nest_depth = st->c_nest_depth = 0;
+    st->npats = 0;
 }
 
 lexer_lexer_state *file_state;
