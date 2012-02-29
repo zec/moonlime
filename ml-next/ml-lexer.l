@@ -126,6 +126,9 @@ static char unescape_rx_escape(const char *buf)
       case 'n':
         c = '\n';
         break;
+      case 't':
+        c = '\t';
+        break;
       default:
         c = buf[1];
     }

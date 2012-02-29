@@ -468,6 +468,8 @@ local function readEscape(conf, s)
 
   if c == 'n' then -- newline
     re = lu.re.char('\n')
+  elseif c == 't' then -- horizontal tab
+    re = lu.re.char('\t')
   else -- literal escape
     re = lu.re.char(c)
   end
@@ -546,6 +548,8 @@ local function readCharClass(conf, s)
         end
         if x == 'n' then
           re:add('\n')
+        elseif x == 't' then
+          re:add('\t')
         else
           re:add(x)
         end
