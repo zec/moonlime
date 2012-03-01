@@ -29,20 +29,21 @@ typedef enum {
     D_PREFIX
 } directive_kind;
 
-struct pattern_entry {
-    regex_t *rx;
-    len_string *code;
-    struct pattern_entry *next;
-};
-
-typedef struct pattern_entry pat_entry_t;
-
 struct lstring_list {
     len_string *s;
     struct lstring_list *next;
 };
 
 typedef struct lstring_list lstr_list_t;
+
+struct pattern_entry {
+    regex_t *rx;
+    len_string *code;
+    lstr_list_t *states;
+    struct pattern_entry *next;
+};
+
+typedef struct pattern_entry pat_entry_t;
 
 typedef struct {
     directive_kind dir;   /* Current type of directive being parsed */
@@ -54,6 +55,8 @@ typedef struct {
     regex_t *rx_stack; /* Stack of regular-expression fragments -- only
                         * types R_CONCAT, R_OPTION, and R_PAREN should be on
                         * the stack! */
+
+    lstr_list_t *curr_st; /* List of start states for current fragment */
 
     pat_entry_t *phead; /* First element in the list of regular expression/
                          * code action pairs */
@@ -101,7 +104,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->code = st->header = st->top = st->initstate = st->prefix = NULL;
     st->curr_rx = st->rx_stack = NULL;
     st->phead = st->ptail = NULL;
-    st->states = NULL;
+    st->states = st->curr_st = NULL;
     st->regex_nest_depth = st->c_nest_depth = 0;
     st->npats = 0;
 }
@@ -176,6 +179,33 @@ static char unescape_rx_escape(const char *buf)
     }
 
     return c;
+}
+
+/* Prepends the text denoted by yytext and yylen to the list starting at lst
+ * if it's not already listed; returns the start of the new version of the
+ * list. */
+static lstr_list_t * add_to_list(const char *yytext, size_t yylen,
+                                 lstr_list_t *lst)
+{
+    len_string *s = lstring_dupbuf(yylen, yytext);
+    lstr_list_t *p = lst;
+
+    while(p != NULL) {
+        if(lstr_eq(s, p->s)) {
+            free(s);
+            return lst;
+        }
+        p = p->next;
+    }
+
+    if( (p = malloc(sizeof(*p))) == NULL ) {
+        fputs("Unable to allocate memory for lstr_list_t\n", stderr);
+        exit(1);
+    }
+
+    p->s = s;
+    p->next = lst;
+    return p;
 }
 
 #ifdef LEXER_DBG
@@ -271,6 +301,8 @@ static const char * directive_name(directive_kind dir)
         fputs("\n", stderr);
         exit(1);
     }
+
+    file_state->curr_st = add_to_list(yytext, yylen, file_state->curr_st);
 
 #ifdef LEXER_DBG
     fputs("Start-state selector \"", stdout);
@@ -599,18 +631,39 @@ static const char * directive_name(directive_kind dir)
 
 <C_CODE> [}] {
     len_string *x;
+    pat_entry_t *ent;
 
     if(--file_state->c_nest_depth == 0) {
         switch(file_state->dir) {
           case D_NONE:
             printf("Pattern:\n");
             print_regex_tree(stdout, file_state->curr_rx);
-            free_regex_tree(file_state->curr_rx);
-            file_state->curr_rx = NULL;
             printf("Code associated with pattern: {\n");
             lstr_fwrite(file_state->code, stdout);
-            free(file_state->code);
             fputs("\n}\n", stdout);
+
+            if( (ent = malloc(sizeof(*ent))) == NULL ) {
+                fputs("Unable to allocate memory for pat_entry_t!\n", stderr);
+                exit(1);
+            }
+
+            ent->rx = file_state->curr_rx;
+            ent->code = file_state->code;
+            ent->states = file_state->curr_st;
+            ent->next = NULL;
+
+            if(file_state->phead == NULL) {
+                file_state->phead = file_state->ptail = ent;
+            } else {
+                file_state->ptail->next = ent;
+                file_state->ptail = ent;
+            }
+
+            ++file_state->npats;
+
+            file_state->curr_rx = NULL;
+            file_state->curr_st = NULL;
+
             break;
 
           case D_HEADER:
@@ -661,9 +714,6 @@ static const char * directive_name(directive_kind dir)
 
 <PRE_C_TOKEN>[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
-    lstr_list_t *p = NULL;
-    len_string *s = NULL;
-
 #ifdef LEXER_DBG
     printf("Directive \'%s\': ", directive_name(file_state->dir));
     fwrite(yytext, 1, yylen, stdout);
@@ -676,30 +726,7 @@ static const char * directive_name(directive_kind dir)
         fwrite(yytext, 1, yylen, stdout);
         fputs("\n", stdout);
 
-        s = lstring_dupbuf(yylen, yytext);
-
-        /* Check for duplicates */
-        p = file_state->states;
-        while(p != NULL) {
-            if(lstr_eq(s, p->s)) {
-                free(s);
-                s = NULL;
-                break;
-            }
-            p = p->next;
-        }
-
-        if(s != NULL) {
-            if( (p = malloc(sizeof(*p))) == NULL ) {
-                fprintf(stderr, __FILE__ ":%d: unable to allocate memory\n",
-                        __LINE__);
-                exit(1);
-            }
-
-            p->s = s;
-            p->next = file_state->states;
-            file_state->states = p;
-        }
+        file_state->states = add_to_list(yytext, yylen, file_state->states);
 
         if(file_state->initstate == NULL)
             file_state->initstate = lstring_dupbuf(yylen, yytext);
@@ -710,6 +737,7 @@ static const char * directive_name(directive_kind dir)
         if(file_state->initstate != NULL)
             free(file_state->initstate);
         file_state->initstate = lstring_dupbuf(yylen, yytext);
+        file_state->states = add_to_list(yytext, yylen, file_state->states);
         break;
 
       case D_PREFIX:
