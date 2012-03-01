@@ -6,6 +6,10 @@
 
 #include "regex.h"
 
+#ifndef ML_UTILS_H
+#include "utils.h"
+#endif
+
 #ifndef ML_STDIO_H
 #define ML_STDIO_H
 #include <stdio.h>
@@ -15,22 +19,14 @@ static regex_t * alloc_regex(size_t array_sz, const char *fname, int line)
 {
     regex_t *ptr, **init_array;
 
-    if( (ptr = malloc(sizeof(*ptr))) == NULL ) {
-        fprintf(stderr, "%s:%d: Unable to allocate memory for regex_t\n",
-                fname, line);
-        exit(1);
-    }
+    ptr = mod_2(1, regex_t, fname, line);
 
     ptr->next = NULL;
 
     if(array_sz <= 0)
         return ptr;
 
-    if( (init_array = malloc(array_sz * sizeof(*init_array))) == NULL ) {
-        fprintf(stderr, "%s:%d: Unable to allocate memory for regex_t *[]\n",
-                fname, line);
-        exit(1);
-    }
+    init_array = mod_2(array_sz, regex_t *, fname, line);
 
     ptr->data.list.n_enc = 0;
     ptr->data.list.array_sz = array_sz;
@@ -124,12 +120,7 @@ void add_enc_rx_impl(regex_t *rx, regex_t *enc, const char *fname, int line)
 
     if(rx->data.list.n_enc + 1 >= rx->data.list.array_sz) {
         new_sz = rx->data.list.array_sz * 2 + 1;
-        if( (new_enc = malloc(new_sz * sizeof(*new_enc))) == NULL) {
-            fprintf(stderr,
-                    "%s:%d: Unable to allocate new memory for enc array\n",
-                    fname, line);
-            exit(1);
-        }
+        new_enc = mod_2(new_sz, regex_t *, fname, line);
 
         for(i = 0; i < rx->data.list.n_enc; ++i)
             new_enc[i] = rx->data.list.enc[i];

@@ -16,6 +16,16 @@
 #include <stdio.h>
 #endif
 
+/* Either successfully allocates memory or quits the program */
+void * malloc_or_die_impl(size_t len, const char *type,
+                          const char *fname, int line);
+
+#define malloc_or_die(n, type) \
+    ((type *) malloc_or_die_impl(n * sizeof(type), #type, __FILE__, __LINE__))
+
+#define mod_2(n, type, fname, line) \
+    ((type *) malloc_or_die_impl(n * sizeof(type), #type, fname, line))
+
 /* A length-prefixed, 8-bit clean string */
 typedef struct {
   size_t len;

@@ -184,8 +184,9 @@ static char unescape_rx_escape(const char *buf)
 /* Prepends the text denoted by yytext and yylen to the list starting at lst
  * if it's not already listed; returns the start of the new version of the
  * list. */
-static lstr_list_t * add_to_list(const char *yytext, size_t yylen,
-                                 lstr_list_t *lst)
+static lstr_list_t * add_to_list_impl(const char *yytext, size_t yylen,
+                                      lstr_list_t *lst, const char *fname,
+                                      int line_num)
 {
     len_string *s = lstring_dupbuf(yylen, yytext);
     lstr_list_t *p = lst;
@@ -198,15 +199,15 @@ static lstr_list_t * add_to_list(const char *yytext, size_t yylen,
         p = p->next;
     }
 
-    if( (p = malloc(sizeof(*p))) == NULL ) {
-        fputs("Unable to allocate memory for lstr_list_t\n", stderr);
-        exit(1);
-    }
+    p = mod_2(1, lstr_list_t, fname, line_num);
 
     p->s = s;
     p->next = lst;
     return p;
 }
+
+#define add_to_list(yytext, yylen, lst) \
+    add_to_list_impl((yytext), (yylen), (lst), __FILE__, __LINE__)
 
 #ifdef LEXER_DBG
 static const char * directive_name(directive_kind dir)
@@ -642,10 +643,7 @@ static const char * directive_name(directive_kind dir)
             lstr_fwrite(file_state->code, stdout);
             fputs("\n}\n", stdout);
 
-            if( (ent = malloc(sizeof(*ent))) == NULL ) {
-                fputs("Unable to allocate memory for pat_entry_t!\n", stderr);
-                exit(1);
-            }
+            ent = malloc_or_die(1, pat_entry_t);
 
             ent->rx = file_state->curr_rx;
             ent->code = file_state->code;

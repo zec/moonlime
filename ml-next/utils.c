@@ -11,16 +11,27 @@
 #include <string.h>
 #endif
 
-static len_string * mk_lstring(size_t len, const char *fname, int line)
+/* Allocate memory or die trying */
+void * malloc_or_die_impl(size_t len, const char *type,
+                          const char *fname, int line)
 {
-    len_string *ptr = malloc(sizeof(*ptr) + len);
+    void *ptr = malloc(len);
 
     /* Fail fast! */
     if(ptr == NULL) {
-        fprintf(stderr, "%s:%d: Can\'t allocate memory for a len_string!\n",
-                fname, line);
+        fprintf(stderr,
+                "%s:%d: Can\'t allocate memory for %zu bytes, type %s\n",
+                fname, line, len, type);
         exit(1);
     }
+
+    return ptr;
+}
+
+static len_string * mk_lstring(size_t len, const char *fname, int line)
+{
+    len_string *ptr = malloc_or_die_impl(sizeof(*ptr) + len, "len_string",
+        fname, line);
 
     /* Note that size_t is an unsigned type,
      * so no problems with negative sizes. */
