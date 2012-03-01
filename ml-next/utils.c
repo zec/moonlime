@@ -117,6 +117,20 @@ len_string * lstrcat_buf_impl(const len_string *a, size_t len, const char *buf,
     return ptr;
 }
 
+int lstr_eq(const len_string *a, const len_string *b)
+{
+    if(a == NULL || b == NULL)
+        return 0;
+
+    if(a->len != b->len)
+        return 0;
+
+    if(a->len == 0 && b->len == 0)
+        return 1;
+
+    return !memcmp(a->s, b->s, a->len);
+}
+
 void lstr_fwrite(const len_string *lstr, FILE *f)
 {
     size_t len, nwritten;

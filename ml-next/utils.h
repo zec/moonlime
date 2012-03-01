@@ -50,6 +50,9 @@ len_string * lstrcat_buf_impl(const len_string *a, size_t len, const char *buf,
 #define lstrcat_buf(a, len, buf) lstrcat_buf_impl((a), (len), (buf), \
     __FILE__, __LINE__)
 
+/* Returns 1 if the contents of a and b are equal, 0 otherwise: */
+int lstr_eq(const len_string *a, const len_string *b);
+
 /* Writes the contents of *lstr to stream f */
 void lstr_fwrite(const len_string *lstr, FILE *f);
 

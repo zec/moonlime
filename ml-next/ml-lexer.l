@@ -37,6 +37,13 @@ struct pattern_entry {
 
 typedef struct pattern_entry pat_entry_t;
 
+struct lstring_list {
+    len_string *s;
+    struct lstring_list *next;
+};
+
+typedef struct lstring_list lstr_list_t;
+
 typedef struct {
     directive_kind dir;   /* Current type of directive being parsed */
     int c_nest_depth;     /* Current brace-nesting depth in C code */
@@ -58,7 +65,9 @@ typedef struct {
     len_string *top;    /* Code to appear at the top of the lexer, after the
                          * header */
 
+    lstr_list_t *states;   /* The list of states */
     len_string *initstate; /* Initial start state */
+
     len_string *prefix; /* A prefix to use for names in the generated lexer. */
 } lexer_lexer_state;
 
@@ -92,6 +101,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->code = st->header = st->top = st->initstate = st->prefix = NULL;
     st->curr_rx = st->rx_stack = NULL;
     st->phead = st->ptail = NULL;
+    st->states = NULL;
     st->regex_nest_depth = st->c_nest_depth = 0;
     st->npats = 0;
 }
@@ -256,7 +266,9 @@ static const char * directive_name(directive_kind dir)
     }
 
     if(!still_valid) {
-        fputs("Invalid start-state selector", stderr);
+        fputs("Invalid start-state selector: ", stderr);
+        fwrite(yytext, 1, yylen, stderr);
+        fputs("\n", stderr);
         exit(1);
     }
 
@@ -649,6 +661,9 @@ static const char * directive_name(directive_kind dir)
 
 <PRE_C_TOKEN>[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
+    lstr_list_t *p = NULL;
+    len_string *s = NULL;
+
 #ifdef LEXER_DBG
     printf("Directive \'%s\': ", directive_name(file_state->dir));
     fwrite(yytext, 1, yylen, stdout);
@@ -657,9 +672,38 @@ static const char * directive_name(directive_kind dir)
 
     switch(file_state->dir) {
       case D_STATE:
-        printf("%%state directive: ");
+        fputs("%state directive: ", stdout);
         fwrite(yytext, 1, yylen, stdout);
-        fputs("\n[NOTE: need to implement list of start states]\n", stdout);
+        fputs("\n", stdout);
+
+        s = lstring_dupbuf(yylen, yytext);
+
+        /* Check for duplicates */
+        p = file_state->states;
+        while(p != NULL) {
+            if(lstr_eq(s, p->s)) {
+                free(s);
+                s = NULL;
+                break;
+            }
+            p = p->next;
+        }
+
+        if(s != NULL) {
+            if( (p = malloc(sizeof(*p))) == NULL ) {
+                fprintf(stderr, __FILE__ ":%d: unable to allocate memory\n",
+                        __LINE__);
+                exit(1);
+            }
+
+            p->s = s;
+            p->next = file_state->states;
+            file_state->states = p;
+        }
+
+        if(file_state->initstate == NULL)
+            file_state->initstate = lstring_dupbuf(yylen, yytext);
+
         break;
 
       case D_INITSTATE:
