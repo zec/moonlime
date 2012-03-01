@@ -59,4 +59,9 @@ void lstr_fwrite(const len_string *lstr, FILE *f);
 /* A character-to-hexadecimal digit table */
 extern const char hex_digits[256];
 
+/* It's useful to know the least number of unsigned ints that can contain
+ * 256 bits: */
+#define ML_UINT_BIT (sizeof(unsigned int) * CHAR_BIT)
+#define CLASS_SZ ((256 + ML_UINT_BIT - 1) / ML_UINT_BIT)
+
 #endif

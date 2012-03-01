@@ -38,8 +38,9 @@ typedef enum {
 #include <limits.h>
 #endif
 
-#define ML_UINT_BIT (sizeof(unsigned int) * CHAR_BIT)
-#define CLASS_SZ ((256 + ML_UINT_BIT - 1) / ML_UINT_BIT)
+#ifndef ML_UTILS_H
+#include "utils.h"
+#endif
 
 typedef struct regex_struct {
     regex_type type;
