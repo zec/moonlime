@@ -297,7 +297,7 @@ void print_fa(FILE *f, fa_t *fa, state_t *initstate)
 {
     state_t *st;
     trans_t *tr;
-    int i;
+    int i, j, k;
 
     if(fa == NULL) {
         fputs("[NULL]\n", f);
@@ -305,7 +305,7 @@ void print_fa(FILE *f, fa_t *fa, state_t *initstate)
     }
 
     for(st = fa->first; st != NULL; st = st->next) {
-        fprintf(f, "State %d:\n", st->id);
+        fprintf(f, "State %d%s:\n", st->id, (st == initstate) ? " [init]" : "");
         if(st->done_num != 0)
             fprintf(f, "  done_num = %d\n", st->done_num);
 
@@ -315,9 +315,24 @@ void print_fa(FILE *f, fa_t *fa, state_t *initstate)
                 fprintf(f, "    [nil] -> %d\n", (tr->dest != NULL) ?
                                                 tr->dest->id : -1);
             else {
-                fprintf(f, "    %08x", tr->cond[0]);
-                for(i = 1; i < CLASS_SZ; ++i)
-                    fprintf(f, ", %08x", tr->cond[i]);
+                fputs("    ", f);
+                for(i = 0; i < CLASS_SZ; ++i) {
+                    if(!tr->cond[i])
+                        continue;
+                    for(j = 0; j < ML_UINT_BIT; ++j) {
+                        if(!(tr->cond[i] & (1 << j)))
+                            continue;
+                        k = (i * ML_UINT_BIT) + j;
+                        if(k == 10)
+                            fputs("\\n", f);
+                        else if(k < 0x20 || k >= 0x7f)
+                            fprintf(f, "\\x%02x", k & 0xff);
+                        else if(k == ' ' || k == '\\')
+                            fprintf(f, "\\%c", k);
+                        else
+                            fputc(k, f);
+                    }
+                }
                 fprintf(f, " -> %d\n", (tr->dest != NULL) ? tr->dest->id : -1);
             }
         }
