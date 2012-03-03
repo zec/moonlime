@@ -30,6 +30,8 @@ static fa_t * mkfa()
     fa_t *fa = malloc_or_die(1, fa_t);
     fa->n_states = 0;
     fa->first = fa->last = NULL;
+
+    return fa;
 }
 
 /* Frees an FA object and all its subsidiary state and transition objects */
@@ -38,7 +40,7 @@ void destroy_fa(fa_t *fa)
     state_t *st, *nst;
     trans_t *tr, *ntr;
 
-    for(st = fa->init; st != NULL; st = nst) {
+    for(st = fa->first; st != NULL; st = nst) {
         for(tr = st->trans; tr != NULL; tr = ntr) {
             ntr = tr->next;
             free(tr);
@@ -233,8 +235,8 @@ static fa_frag_t * regex_to_nfa_frag(regex_t *rx, fa_t *fa)
 
         if(rx->data.num.max != -1) {
             dummy.type = R_MAYBE;
-            dummy.enc = rx->data.num.enc;
-            while(i < rx->data.max) {
+            dummy.data.enc = rx->data.num.enc;
+            while(i < rx->data.num.max) {
                 subfrag = regex_to_nfa_frag(&dummy, fa);
                 for(p = frag->final; p != NULL; p = p->next_fin)
                     p->dest = subfrag->init;
@@ -244,7 +246,7 @@ static fa_frag_t * regex_to_nfa_frag(regex_t *rx, fa_t *fa)
             }
         } else {
             dummy.type = R_STAR;
-            dummy.enc = rx->data.num.enc;
+            dummy.data.enc = rx->data.num.enc;
             subfrag = regex_to_nfa_frag(&dummy, fa);
             for(p = frag->final; p != NULL; p = p->next_fin)
                 p->dest = subfrag->init;
