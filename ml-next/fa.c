@@ -292,3 +292,34 @@ fa_t * single_regex_compile(regex_t *rx, state_t **initstate)
 
     return fa;
 }
+
+void print_fa(FILE *f, fa_t *fa, state_t *initstate)
+{
+    state_t *st;
+    trans_t *tr;
+    int i;
+
+    if(fa == NULL) {
+        fputs("[NULL]\n", f);
+        return;
+    }
+
+    for(st = fa->first; st != NULL; st = st->next) {
+        fprintf(f, "State %d:\n", st->id);
+        if(st->done_num != 0)
+            fprintf(f, "  done_num = %d\n", st->done_num);
+
+        fputs("  Transitions:\n", f);
+        for(tr = st->trans; tr != NULL; tr = tr->next) {
+            if(tr->is_nil)
+                fprintf(f, "    [nil] -> %d\n", (tr->dest != NULL) ?
+                                                tr->dest->id : -1);
+            else {
+                fprintf(f, "    %08x", tr->cond[0]);
+                for(i = 1; i < CLASS_SZ; ++i)
+                    fprintf(f, ", %08x", tr->cond[i]);
+                fprintf(f, " -> %d\n", (tr->dest != NULL) ? tr->dest->id : -1);
+            }
+        }
+    }
+}

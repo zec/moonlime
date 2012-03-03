@@ -15,6 +15,11 @@
 #include "regex.h"
 #endif
 
+#ifndef ML_STDIO_H
+#define ML_STDIO_H
+#include <stdio.h>
+#endif
+
 typedef struct state_str state_t;
 
 /* A transition between states */
@@ -57,5 +62,6 @@ typedef struct {
 
 void destroy_fa(fa_t *fa);
 fa_t * single_regex_compile(regex_t *rx, state_t **initstate);
+void print_fa(FILE *f, fa_t *fa, state_t *initstate);
 
 #endif
