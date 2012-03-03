@@ -16,6 +16,11 @@
 #include <stdio.h>
 #endif
 
+#ifndef ML_LIMITS_H
+#define ML_LIMITS_H
+#include <limits.h>
+#endif
+
 /* Either successfully allocates memory or quits the program */
 void * malloc_or_die_impl(size_t len, const char *type,
                           const char *fname, int line);

@@ -33,11 +33,6 @@ typedef enum {
 #include <stdio.h>
 #endif
 
-#ifndef ML_LIMITS_H
-#define ML_LIMITS_H
-#include <limits.h>
-#endif
-
 #ifndef ML_UTILS_H
 #include "utils.h"
 #endif
