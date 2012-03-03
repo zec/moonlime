@@ -208,6 +208,9 @@ static fa_frag_t * regex_to_nfa_frag(regex_t *rx, fa_t *fa)
         for(p = subfrag->final; p != NULL; p = p->next_fin)
             p->dest = init_st;
 
+        tr = mktrans(init_st, subfrag->init);
+        tr->is_nil = 1;
+
         tr = mktrans(init_st, NULL);
         tr->is_nil = 1;
         frag->final = tr;
