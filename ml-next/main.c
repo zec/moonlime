@@ -33,6 +33,10 @@
 #include "ml-lexer.h"
 #endif
 
+#ifndef ML_FA_H
+#include "fa.h"
+#endif
+
 int main(int argc, char **argv)
 {
     lexer_lexer_state s;
@@ -84,5 +88,20 @@ int main(int argc, char **argv)
     }
 
     MoonlimeDestroy(lexer);
+
+    {
+        pat_entry_t *p;
+        fa_t *fa;
+        state_t *initstate;
+        int i = 0;
+
+        for(p = s.phead; p != NULL; p = p->next) {
+            fa = single_regex_compile(p->rx, &initstate);
+            printf("--- NFA %d:\n", ++i);
+            print_fa(stdout, fa, initstate);
+            destroy_fa(fa);
+        }
+    }
+
     return 0;
 }

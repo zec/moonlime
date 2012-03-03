@@ -1,6 +1,6 @@
 PROG=moonlime
 OBJS=ml-lexer.o main.o utils.o regex.o fa.o
-HEADER_DEPS=utils.h regex.h
+HEADER_DEPS=utils.h regex.h fa.h
 
 CC=gcc
 CFLAGS=-Wall -Werror
