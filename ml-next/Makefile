@@ -1,5 +1,5 @@
 PROG=moonlime
-OBJS=ml-lexer.o main.o utils.o regex.o
+OBJS=ml-lexer.o main.o utils.o regex.o fa.o
 HEADER_DEPS=utils.h regex.h
 
 CC=gcc
