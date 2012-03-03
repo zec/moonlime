@@ -11,7 +11,11 @@
 #include "utils.h"
 #endif
 
-typdef struct state_str state_t;
+#ifndef ML_REGEX_H
+#include "regex.h"
+#endif
+
+typedef struct state_str state_t;
 
 /* A transition between states */
 struct transition {
@@ -31,6 +35,8 @@ typedef struct transition trans_t;
 /* A state in a finite automaton */
 struct state_str {
     int id;           /* Unique in the automaton in question */
+    int done_num;     /* Indicates that this state is an end state
+                       * (and which) */
     trans_t *trans;   /* Start of the list of transitions from this state */
     state_t *next;    /* Next in the list of states in the automaton */
 };
@@ -48,5 +54,8 @@ typedef struct {
     state_t *init;  /* The initial state of this fragment */
     trans_t *final; /* The list of transitions out of this fragment */
 } fa_frag_t;
+
+void destroy_fa(fa_t *fa);
+fa_t * single_regex_compile(regex_t *rx, state_t **initstate);
 
 #endif

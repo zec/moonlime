@@ -33,7 +33,7 @@ static fa_t * mkfa()
 }
 
 /* Frees an FA object and all its subsidiary state and transition objects */
-static void destroy_fa(fa_t *fa)
+void destroy_fa(fa_t *fa)
 {
     state_t *st, *nst;
     trans_t *tr, *ntr;
@@ -57,6 +57,7 @@ static state_t * mkstate(fa_t *fa)
     state_t *st = malloc_or_die(1, state_t);
 
     st->id = fa->n_states++;
+    st->done_num = 0;
     st->trans = NULL;
     st->next = NULL;
 
@@ -265,4 +266,27 @@ static fa_frag_t * regex_to_nfa_frag(regex_t *rx, fa_t *fa)
     }
 
     return frag;
+}
+
+fa_t * single_regex_compile(regex_t *rx, state_t **initstate)
+{
+    fa_t *fa = mkfa();
+    fa_frag_t *frag;
+    state_t *endstate;
+    trans_t *p;
+
+    frag = regex_to_nfa_frag(rx, fa);
+
+    endstate = mkstate(fa);
+    endstate->done_num = 1;
+
+    for(p = frag->final; p != NULL; p = p->next_fin)
+        p->dest = endstate;
+
+    if(initstate != NULL)
+        *initstate = frag->init;
+
+    free(frag);
+
+    return fa;
 }
