@@ -24,6 +24,33 @@
 #include "regex.h"
 #endif
 
+/* Creates and sets up an FA object */
+static fa_t * mkfa()
+{
+    fa_t *fa = malloc_or_die(1, fa_t);
+    fa->n_states = 0;
+    fa->first = fa->last = NULL;
+}
+
+/* Frees an FA object and all its subsidiary state and transition objects */
+static void destroy_fa(fa_t *fa)
+{
+    state_t *st, *nst;
+    trans_t *tr, *ntr;
+
+    for(st = fa->init; st != NULL; st = nst) {
+        for(tr = st->trans; tr != NULL; tr = ntr) {
+            ntr = tr->next;
+            free(tr);
+        }
+
+        nst = st->next;
+        free(st);
+    }
+
+    free(fa);
+}
+
 /* Makes a state in a particular finite automaton fa */
 static state_t * mkstate(fa_t *fa)
 {
