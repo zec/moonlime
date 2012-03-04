@@ -237,8 +237,8 @@ static const char * directive_name(directive_kind dir)
 %state NON_WHSP_IS_ERROR
 
 // Ignore C- and C++-style comments
-<MAIN,IN_REGEX> [/][*]([^*]|[*]+[^*/])*[*][/] |
-                [/][/][^\n]*\n { ; }
+<MAIN,IN_REGEX> ([/][*]([^*]|[*]+[^*/])*[*][/]) |
+                ([/][/][^\n]*\n) { ; }
 
 <MAIN> [%][abcdefghijklmnopqrstuvwxyz]+ {
     if(yylen == 4 && !strncmp(yytext, "%top", yylen)) {
@@ -329,7 +329,7 @@ static const char * directive_name(directive_kind dir)
     YYSTART(IN_CHARCLASS);
 }
 
-<IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2})|[^x] {
+<IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2}|[^x]) {
 #ifdef LEXER_DBG
     printf(yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
            yytext[1], yytext[2], yytext[3]);
@@ -687,17 +687,17 @@ static const char * directive_name(directive_kind dir)
         file_state->code = NULL;
         YYSTART(MAIN);
     } else {
-        x = lstrcat_s(file_state->code, "{");
+        x = lstrcat_s(file_state->code, "}");
         free(file_state->code);
         file_state->code = x;
     }
 }
 
-<C_CODE>["]([^"\\]|\\.|\n)*["] |
-        [']([^'\\]|\\.|\n)*['] |
-        [/][*]([^*]|[*]+[^*/])*[*][/] |
-        [/][/][^\n]*\n |
-        [^{}"'] | \n {
+<C_CODE> (["]([^"\\]|\\.|\n)*["]) |
+ ([']([^'\\]|\\.|\n)*[']) |
+ ([/][*]([^*]|[*]+[^*/]|\n)*[*][/]) |
+ ([/][/][^\n]*\n) |
+ [^{}"'] | \n {
     len_string *x = lstrcat_buf(file_state->code, yylen, yytext);
     free(file_state->code);
     file_state->code = x;
