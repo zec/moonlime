@@ -39,17 +39,23 @@ tmpl_state *tstate = NULL;
 %prefix Template
 
 [%]HEADER[%] {
-    fprintf(tstate->f, "%.*s", (int) tstate->st->header->len,
-            tstate->st->header->s);
+    if(tstate->st->header != NULL)
+        fprintf(tstate->f, "%.*s", (int) tstate->st->header->len,
+                tstate->st->header->s);
 }
 
 [%]TOP[%] {
-    fprintf(tstate->f, "%.*s", (int) tstate->st->top->len, tstate->st->top->s);
+    if(tstate->st->top != NULL)
+        fprintf(tstate->f, "%.*s", (int) tstate->st->top->len,
+                tstate->st->top->s);
 }
 
 [%]PREFIX[%] {
-    fprintf(tstate->f, "%.*s", (int) tstate->st->prefix->len,
-            tstate->st->prefix->s);
+    if(tstate->st->prefix != NULL)
+        fprintf(tstate->f, "%.*s", (int) tstate->st->prefix->len,
+                tstate->st->prefix->s);
+    else
+        fputs("Lexer", tstate->f);
 }
 
 [%]FASTATES[%] {
@@ -113,6 +119,7 @@ tmpl_state *tstate = NULL;
                 (int) ((len_string *) l->data1)->len,
                 ((len_string *) l->data1)->s, i++);
 
+    fprintf(tstate->f, "#define YY_MAXSTATE %d\n", i-1);
     fprintf(tstate->f, "#define YY_INITSTATE YY_STATE_%.*s\n",
             (int) tstate->st->initstate->len, tstate->st->initstate->s);
 }
@@ -128,6 +135,6 @@ tmpl_state *tstate = NULL;
     }
 }
 
-. {
+.|\n {
     fputc(yytext[0], tstate->f);
 }

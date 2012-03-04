@@ -29,8 +29,17 @@
 #include <stdlib.h>
 #endif
 
+#ifndef ML_STRING_H
+#define ML_STRING_H
+#include <string.h>
+#endif
+
 #ifndef ML_ML_LEXER_H
 #include "ml-lexer.h"
+#endif
+
+#ifndef ML_TMPL_LEX_H
+#include "tmpl-lex.h"
 #endif
 
 #ifndef ML_FA_H
@@ -40,6 +49,7 @@
 static fa_list_t * mk_regex_list(lexer_lexer_state *s);
 static fa_list_t * mk_start_state_list(lexer_lexer_state *s);
 static void free_fa_list(fa_list_t *l);
+static void run_tmpl(tmpl_state *t, const char *tmpl_name);
 
 int main(int argc, char **argv)
 {
@@ -48,6 +58,59 @@ int main(int argc, char **argv)
     void *lexer;
     char buf[256];
     size_t num_in = 1;
+    const char *lexer_name = NULL;
+    const char *cout_name = NULL;
+    const char *hout_name = NULL;
+    char *new_hout_name = NULL;
+    const char *ctmpl_name = "tmpl.c";
+    const char *htmpl_name = "tmpl.h";
+    int i;
+    size_t slen;
+
+    for(i = 1; i < argc; ++i) {
+        if(!strcmp(argv[i], "-o")) {
+            if(++i >= argc) {
+                fputs("No output file given after -o\n", stderr);
+                return 1;
+            }
+            cout_name = argv[i];
+
+        } else if(!strcmp(argv[i], "-i")) {
+            if(++i >= argc) {
+                if(cout_name == NULL)
+                    continue;
+
+                slen = strlen(cout_name);
+                if(!strcmp(argv[i] + slen - 2, ".c")) {
+                    if(new_hout_name != NULL)
+                        free(new_hout_name);
+
+                    new_hout_name = malloc_or_die(slen + 1, char);
+                    strncpy(new_hout_name, cout_name, slen+1);
+                    strcpy(new_hout_name + slen - 2, ".h");
+                    hout_name = new_hout_name;
+                } else {
+                    if(new_hout_name != NULL)
+                        free(new_hout_name);
+                    new_hout_name = NULL;
+                    hout_name = "yylex.h";
+                }
+            } else {
+                if(new_hout_name != NULL)
+                    free(new_hout_name);
+                new_hout_name = NULL;
+                hout_name = argv[i];
+            }
+        } else
+            lexer_name = argv[i];
+    }
+
+    if(lexer_name == NULL) {
+        fputs("No lexer file given\n", stderr);
+        return 1;
+    }
+    if(cout_name == NULL)
+        cout_name = "yylex.c";
 
     /*
      * Right now, we're just trying to check that the lexer-lexer tokenizes the
@@ -57,7 +120,7 @@ int main(int argc, char **argv)
     init_lexer_lexer_state(&s);
     file_state = &s;
 
-    if((f = fopen(argv[1], "r")) == NULL) {
+    if((f = fopen(lexer_name, "r")) == NULL) {
         fprintf(stderr, "Couldn\'t open file \'%s\'\n", argv[1]);
         return 1;
     }
@@ -92,6 +155,7 @@ int main(int argc, char **argv)
     }
 
     MoonlimeDestroy(lexer);
+    fclose(f);
 
     if(s.states == NULL) {
         s.initstate = lstring_dupbuf(1, "A");
@@ -117,6 +181,8 @@ int main(int argc, char **argv)
     {
         fa_list_t *rxl = mk_regex_list(&s), *stsl = mk_start_state_list(&s);
         fa_t *nfa = multi_regex_compile(rxl), *dfa;
+        tmpl_state tms;
+        tstate = &tms;
 
         printf("--- total NFA:\n");
         print_fa(stdout, nfa, NULL);
@@ -124,6 +190,31 @@ int main(int argc, char **argv)
         printf("--- total DFA:\n");
         dfa = nfas_to_dfas(nfa, rxl, stsl);
         print_fa(stdout, dfa, NULL);
+
+        tms.st = &s;
+        tms.dfa = dfa;
+        tms.patterns = rxl;
+        tms.start_states = stsl;
+
+        if((f = fopen(cout_name, "w")) == NULL) {
+            fprintf(stderr, "Can\'t open %s for writing\n", cout_name);
+            return 1;
+        }
+
+        tms.f = f;
+        run_tmpl(&tms, ctmpl_name);
+        fclose(f);
+
+        if(hout_name != NULL) {
+            if((f = fopen(hout_name, "w")) == NULL) {
+                fprintf(stderr, "Can\'t open %s for writing\n", hout_name);
+                return 1;
+            }
+
+            tms.f = f;
+            run_tmpl(&tms, htmpl_name);
+            fclose(f);
+        }
 
         free_fa_list(rxl);
         free_fa_list(stsl);
@@ -197,4 +288,51 @@ static void free_fa_list(fa_list_t *l)
         free(l);
         l = next;
     }
+}
+
+static void run_tmpl(tmpl_state *t, const char *tmpl_name)
+{
+    FILE *f;
+    char buf[1];
+    void *lexer;
+    size_t num_in = 1;
+    int num_tot = 0;
+
+    if((f = fopen(tmpl_name, "r")) == NULL) {
+        fprintf(stderr, "Can\'t open %s for reading\n", tmpl_name);
+        exit(1);
+    }
+
+    if((lexer = TemplateInit(malloc, free)) == NULL) {
+        fputs("Error in TemplateInit\n", stderr);
+        exit(1);
+    }
+
+    while(num_in > 0) {
+        num_in = fread(buf, 1, sizeof(buf), f);
+
+        if(num_in != 0) {
+            if(!TemplateRead(lexer, buf, num_in)) {
+                fprintf(stderr, "Error lexing %s (%d-%d)\n", tmpl_name,
+                        num_tot, num_tot + (int) num_in);
+                TemplateDestroy(lexer);
+                exit(1);
+            }
+        }
+        num_tot += num_in;
+
+        if(ferror(f)) {
+            fprintf(stderr, "Error reading %s\n", tmpl_name);
+            TemplateDestroy(lexer);
+            exit(1);
+        }
+    }
+
+    if(!TemplateRead(lexer, NULL, 0)) {
+        fprintf(stderr, "Error near the end of %s\n", tmpl_name);
+        exit(1);
+    }
+
+    TemplateDestroy(lexer);
+    fclose(f);
 }
