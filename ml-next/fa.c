@@ -533,6 +533,7 @@ fputs("\n", stdout);*/
     free(nil_closures);
     free(nfa_arr);
     for(ptr = state_map; ptr != NULL; ptr = next) {
+        free(ptr->data1);
         next = ptr->next;
         free(ptr);
     }
