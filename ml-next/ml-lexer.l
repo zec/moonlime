@@ -29,13 +29,6 @@ typedef enum {
     D_PREFIX
 } directive_kind;
 
-struct lstring_list {
-    len_string *s;
-    struct lstring_list *next;
-};
-
-typedef struct lstring_list lstr_list_t;
-
 struct pattern_entry {
     regex_t *rx;
     len_string *code;

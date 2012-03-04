@@ -37,6 +37,14 @@ typedef struct {
   char s[1];
 } len_string;
 
+/* A list of len_strings */
+struct lstring_list {
+    len_string *s;
+    struct lstring_list *next;
+};
+
+typedef struct lstring_list lstr_list_t;
+
 /* The len_string * returned by the following functions is allocated from
  * the heap and can be deallocated by a simple free() of the len_string *. */
 
