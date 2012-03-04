@@ -401,17 +401,28 @@ static void set_or(char *a, const char *b, size_t str_size)
 
 static state_t * nfa_to_dfa(len_string *state_set, fa_t *dfa,
                             fa_list_t **state_map, size_t str_size,
-                            const char *nil_closures, state_t **nfa)
+                            const char *nil_closures, state_t **nfa,
+int depth)
 {
-    int is_new, i, k;
+    int is_new, i, k, is_nonempty_set;
     size_t j, n_unpacked = 0;
-    state_t *dfa_init = get_state(state_map, state_set, nfa, dfa, &is_new);
+    state_t *dfa_init;
     len_string *set = mk_blank_lstring(str_size);
     state_t **unpacked = malloc_or_die(str_size * CHAR_BIT, state_t *);
     state_t *st;
     trans_t *t;
 
+    dfa_init = get_state(state_map, state_set, nfa, dfa, &is_new);
+
+/*printf("%d ", depth);
+for(j = 0; j < str_size; ++j)
+printf("%02x", state_set->s[j] & 0xff);
+printf("\n");
+if(!is_new) printf("<-\n");*/
+
     if(is_new) {
+        set = mk_blank_lstring(str_size);
+        unpacked = malloc_or_die(str_size * CHAR_BIT, state_t *);
 
         for(j = 0; j < str_size; ++j) {
             if(!state_set->s[j])
@@ -420,39 +431,48 @@ static state_t * nfa_to_dfa(len_string *state_set, fa_t *dfa,
                 if(state_set->s[j] & (1 << k))
                     unpacked[n_unpacked++] = nfa[j * CHAR_BIT + k];
         }
+/*printf("u %zu\n", n_unpacked);*/
 
         for(i = 0; i < 256; ++i) {
+/*printf("c %d\n", i);*/
             memset(set->s, 0, str_size);
+            is_nonempty_set = 0;
+
             for(j = 0; j < n_unpacked; ++j) {
                 for(t = unpacked[j]->trans; t != NULL; t = t->next)
                     if(!t->is_nil &&
-                       t->cond[j / CHAR_BIT] & (1 << (j % CHAR_BIT))) {
+                       (t->cond[i / ML_UINT_BIT] & (1 << (i % ML_UINT_BIT)))
+                        != 0) {
+/*printf("x %d %zu\n", i, j);*/
                         k = t->dest->id;
                         set_or(set->s, nil_closures + (k * str_size), str_size);
+                        is_nonempty_set = 1;
                     }
             }
 
-            st = nfa_to_dfa(state_set, dfa, state_map, str_size, nil_closures,
-                            nfa);
+            if(is_nonempty_set) {
+                st = nfa_to_dfa(set, dfa, state_map, str_size, nil_closures,
+                                nfa,
+depth+1);
 
-            for(t = dfa_init->trans; t != NULL; t = t->next) {
-                if(t->dest == st) {
-                    t->cond[i / CHAR_BIT] |= 1 << (i % CHAR_BIT);
-                    break;
+                for(t = dfa_init->trans; t != NULL; t = t->next) {
+                    if(t->dest == st) {
+                        t->cond[i / ML_UINT_BIT] |= 1 << (i % ML_UINT_BIT);
+                        break;
+                    }
+                }
+
+                if(t == NULL) { /* No pre-existing transitions to st */
+                    t = mktrans(dfa_init, st);
+                    t->cond[i / ML_UINT_BIT] |= 1 << (i % ML_UINT_BIT);
                 }
             }
-
-            if(t == NULL) { /* No pre-existing transitions to st */
-                t = mktrans(dfa_init, st);
-                t->cond[i / CHAR_BIT] |= 1 << (i % CHAR_BIT);
-                t->next = dfa_init->trans;
-                dfa_init->trans = t;
-            }
         }
+
+        free(set);
+        free(unpacked);
     }
 
-    free(set);
-    free(unpacked);
     return dfa_init;
 }
 
@@ -472,10 +492,13 @@ fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list)
     len_string *str;
 
     for(pd = dfa_list; pd != NULL; pd = pd->next) {
+/*fwrite( ((len_string *) (pd->data1))->s, 1, ((len_string *) (pd->data1))->len, stdout);
+fputs("\n", stdout);*/
         pd->state = initstate = mkstate(nfa);
 
         for(pn = nfa_list; pn != NULL; pn = pn->next) {
-            if(!lstr_in_list((len_string *) pd->data1,
+            if(pn->data2 != NULL &&
+               !lstr_in_list((len_string *) pd->data1,
                              (lstr_list_t *) pn->data2))
                 continue;
 
@@ -496,10 +519,14 @@ fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list)
         nfa_arr[st->id] = st;
 
     for(pd = dfa_list; pd != NULL; pd = pd->next) {
+/*fputs("*", stdout);
+fwrite( ((len_string *) (pd->data1))->s, 1, ((len_string *) (pd->data1))->len, stdout);
+fputs("\n", stdout);*/
         str = lstring_dupbuf(set_size,
                              nil_closures + (pd->state->id * set_size));
         pd->state = nfa_to_dfa(str, dfa, &state_map, set_size,
-                               nil_closures, nfa_arr);
+                               nil_closures, nfa_arr,
+0);
         free(str);
     }
 
