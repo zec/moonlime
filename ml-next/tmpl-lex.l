@@ -2,7 +2,7 @@
 /* A lexer for template .c and .h files.
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms. */
 
-#define ML_TMPL_LEXER_H
+#define ML_TMPL_LEX_H
 
 #ifndef ML_STDIO_H
 #define ML_STDIO_H
@@ -35,6 +35,8 @@ extern tmpl_state *tstate;
 %top {
 tmpl_state *tstate = NULL;
 }
+
+%prefix Template
 
 [%]HEADER[%] {
     fprintf(tstate->f, "%.*s", (int) tstate->st->header->len,

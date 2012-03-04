@@ -1,5 +1,5 @@
 PROG=moonlime
-OBJS=ml-lexer.o main.o utils.o regex.o fa.o tmpl-lexer.o
+OBJS=ml-lexer.o main.o utils.o regex.o fa.o tmpl-lex.o
 HEADER_DEPS=utils.h regex.h fa.h
 
 CC=gcc
@@ -18,14 +18,14 @@ $(PROG): $(OBJS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 fa.o: utils.h regex.h fa.h
-main.o: ml-lexer.c utils.h fa.h
+main.o: ml-lexer.c utils.h fa.h tmpl-lex.c
 ml-lexer.o: utils.h regex.h
 regex.o: utils.h regex.h
-tmpl-lexer.o: utils.h fa.h ml-lexer.c
+tmpl-lex.o: utils.h fa.h ml-lexer.c
 utils.o: utils.h
 
 .l.c:
 	../moonlime $< -o $@ -i
 
 clean:
-	rm -f $(PROG) *-lexer.[ch] *.o
+	rm -f $(PROG) *-lex*.[ch] *.o
