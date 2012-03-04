@@ -38,6 +38,7 @@
 #endif
 
 static fa_list_t * mk_regex_list(lexer_lexer_state *s);
+static fa_list_t * mk_start_state_list(lexer_lexer_state *s);
 static void free_fa_list(fa_list_t *l);
 
 int main(int argc, char **argv)
@@ -92,6 +93,13 @@ int main(int argc, char **argv)
 
     MoonlimeDestroy(lexer);
 
+    if(s.states == NULL) {
+        s.initstate = lstring_dupbuf(1, "A");
+        s.states = malloc_or_die(1, lstr_list_t);
+        s.states->s = s.initstate;
+        s.states->next = NULL;
+    }
+
     if(0) {
         pat_entry_t *p;
         fa_t *fa;
@@ -107,13 +115,20 @@ int main(int argc, char **argv)
     }
 
     {
-        fa_list_t *l = mk_regex_list(&s);
-        fa_t *fa = multi_regex_compile(l);
+        fa_list_t *rxl = mk_regex_list(&s), *stsl = mk_start_state_list(&s);
+        fa_t *nfa = multi_regex_compile(rxl), *dfa;
 
-        free_fa_list(l);
         printf("--- total NFA:\n");
-        print_fa(stdout, fa, NULL);
-        destroy_fa(fa);
+        print_fa(stdout, nfa, NULL);
+
+        printf("--- total DFA:\n");
+        dfa = nfas_to_dfas(nfa, rxl, stsl);
+        print_fa(stdout, dfa, NULL);
+
+        free_fa_list(rxl);
+        free_fa_list(stsl);
+        destroy_fa(nfa);
+        destroy_fa(dfa);
     }
 
     return 0;
@@ -136,6 +151,32 @@ static fa_list_t * mk_regex_list(lexer_lexer_state *s)
         curr->data1 = p->rx;
         curr->data2 = p->states;
         curr->data3 = p->code;
+
+        last = curr;
+        p = p->next;
+    }
+
+    if(curr != NULL)
+        curr->next = NULL;
+
+    return first;
+}
+
+static fa_list_t * mk_start_state_list(lexer_lexer_state *s)
+{
+    lstr_list_t *p = s->states;
+    fa_list_t *first = NULL, *last = NULL, *curr = NULL;
+
+    while(p != NULL) {
+        curr = malloc_or_die(1, fa_list_t);
+
+        if(first == NULL)
+            first = curr;
+        if(last != NULL)
+            last->next = curr;
+
+        curr->state = NULL;
+        curr->data1 = p->s;
 
         last = curr;
         p = p->next;
