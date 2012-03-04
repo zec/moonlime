@@ -60,8 +60,17 @@ typedef struct {
     trans_t *final; /* The list of transitions out of this fragment */
 } fa_frag_t;
 
+/* A list of FA start-states, with associated data: */
+typedef struct fa_list_struct {
+    state_t *state;
+    void *data1;
+    void *data2;
+    struct fa_list_struct *next;
+} fa_list_t;
+
 void destroy_fa(fa_t *fa);
 fa_t * single_regex_compile(regex_t *rx, state_t **initstate);
+fa_t * multi_regex_compile(fa_list_t *l);
 void print_fa(FILE *f, fa_t *fa, state_t *initstate);
 
 #endif

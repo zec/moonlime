@@ -296,6 +296,32 @@ fa_t * single_regex_compile(regex_t *rx, state_t **initstate)
     return fa;
 }
 
+/* Here, fa_list_t.data1 is interpreted as a regex_t * */
+fa_t * multi_regex_compile(fa_list_t *l)
+{
+    fa_t *fa = mkfa();
+    fa_frag_t *frag;
+    state_t *endstate;
+    trans_t *t;
+    int n = 0;
+
+    while(l != NULL) {
+        frag = regex_to_nfa_frag((regex_t *) l->data1, fa);
+
+        endstate = mkstate(fa);
+        endstate->done_num = ++n;
+        for(t = frag->final; t != NULL; t = t->next_fin)
+            t->dest = endstate;
+
+        l->state = frag->init;
+
+        free(frag);
+        l = l->next;
+    }
+
+    return fa;
+}
+
 void print_fa(FILE *f, fa_t *fa, state_t *initstate)
 {
     state_t *st;
