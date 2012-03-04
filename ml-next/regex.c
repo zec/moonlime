@@ -298,6 +298,7 @@ static void print_regex_tree_int(FILE *f, regex_t *rx, size_t depth)
                 if(rx->data.cls.set[i] & (1 << j))
                     print_escaped_char(f, j + ML_UINT_BIT * i);
         }
+        fputs("]\n", f);
         break;
 
       case R_ANY:
