@@ -17,7 +17,11 @@ $(PROG): $(OBJS)
 .c.o: $(HEADER_DEPS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-main.o: ml-lexer.c
+fa.o: utils.h regex.h fa.h
+main.o: ml-lexer.c utils.h fa.h
+ml-lexer.o: utils.h regex.h
+regex.o: utils.h regex.h
+utils.o: utils.h
 
 .l.c:
 	../moonlime $< -o $@ -i
