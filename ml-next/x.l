@@ -1,12 +1,14 @@
 // This is a comment
 
-%header { a; /* a comment } in code */ // another comment in code }
+%header { typedef int z; /* a comment } in code */ // another comment in code }
 // Note: the two closing braces in the line above should *not*
 // end the directive.
 }
 
 /* This is also a comment */
-%top { b; }
+%top {
+#include <stdio.h>
+}
 
 %state ABC
 
@@ -16,24 +18,24 @@
 
 %prefix XyzLexer
 
-ab c { 1; }
+ab c { puts("1"); }
 
-a ?b* c+ { 2; }
+a ?b* c+ { puts("2"); }
 
-d{5} { 3; }
+d{5} { puts("3"); }
 
-d{6,8} { 4; }
+d{6,8} { puts("4"); }
 
-d{9,} { 5; }
+d{9,} { puts("5"); }
 
-d{,4} { 6; }
+d{,4} { puts("6"); }
 
-ef|ghi { 7; }
+ef|ghi { puts("7"); }
 
-(ef|gh)j { 8; }
+(ef|gh)j { puts("8"); }
 
-e(fg||gh)(|fg)(fg|)(f|)(|g)k { 9; }
+e(fg||gh)(|fg)(fg|)(f|)(|g)k { puts("9"); }
 
-j(l{4,5}){3}k { 10; }
+j(l{4,5}){3}k { puts("10"); }
 
-j+?{,6} { 11; }
+j+?{,6} { puts("11"); }
