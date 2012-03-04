@@ -161,6 +161,17 @@ void lstr_fwrite(const len_string *lstr, FILE *f)
     }
 }
 
+int lstr_in_list(const len_string *s, const lstr_list_t *l)
+{
+    while(l != NULL) {
+        if(lstr_eq(s, l->s))
+            return 1;
+        l = l->next;
+    }
+
+    return 0;
+}
+
 const char hex_digits[256] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
     ['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9,

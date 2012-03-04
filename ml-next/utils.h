@@ -79,6 +79,9 @@ int lstr_eq(const len_string *a, const len_string *b);
 /* Writes the contents of *lstr to stream f */
 void lstr_fwrite(const len_string *lstr, FILE *f);
 
+/* Returns whether or not s is contained in the list starting with l */
+int lstr_in_list(const len_string *s, const lstr_list_t *l);
+
 /* A character-to-hexadecimal digit table */
 extern const char hex_digits[256];
 
