@@ -309,7 +309,7 @@ fa_t * multi_regex_compile(fa_list_t *l)
         frag = regex_to_nfa_frag((regex_t *) l->data1, fa);
 
         endstate = mkstate(fa);
-        endstate->done_num = ++n;
+        l->done_num = endstate->done_num = ++n;
         for(t = frag->final; t != NULL; t = t->next_fin)
             t->dest = endstate;
 

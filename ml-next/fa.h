@@ -63,8 +63,11 @@ typedef struct {
 /* A list of FA start-states, with associated data: */
 typedef struct fa_list_struct {
     state_t *state;
+    int done_num;
+
     void *data1;
     void *data2;
+    void *data3;
     struct fa_list_struct *next;
 } fa_list_t;
 
