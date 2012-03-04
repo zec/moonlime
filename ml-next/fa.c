@@ -467,6 +467,7 @@ fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list)
     state_t **nfa_arr;
     char *nil_closures;
     fa_list_t *state_map = NULL;
+    fa_list_t *ptr, *next;
     size_t set_size;
     len_string *str;
 
@@ -504,6 +505,10 @@ fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list)
 
     free(nil_closures);
     free(nfa_arr);
+    for(ptr = state_map; ptr != NULL; ptr = next) {
+        next = ptr->next;
+        free(ptr);
+    }
 
     return dfa;
 }
