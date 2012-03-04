@@ -74,6 +74,7 @@ typedef struct fa_list_struct {
 void destroy_fa(fa_t *fa);
 fa_t * single_regex_compile(regex_t *rx, state_t **initstate);
 fa_t * multi_regex_compile(fa_list_t *l);
+fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list);
 void print_fa(FILE *f, fa_t *fa, state_t *initstate);
 
 #endif

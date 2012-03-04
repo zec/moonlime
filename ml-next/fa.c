@@ -16,6 +16,16 @@
 #include <stdio.h>
 #endif
 
+#ifndef ML_STRING_H
+#define ML_STRING_H
+#include <string.h>
+#endif
+
+#ifndef ML_LIMITS_H
+#define ML_LIMITS_H
+#include <limits.h>
+#endif
+
 #ifndef ML_UTILS_H
 #include "utils.h"
 #endif
@@ -320,6 +330,182 @@ fa_t * multi_regex_compile(fa_list_t *l)
     }
 
     return fa;
+}
+
+static void calc_nil_closure(state_t *s, char *bitset)
+{
+    trans_t *t;
+    int id = s->id;
+
+    bitset[id / CHAR_BIT] |= (1 << (id % CHAR_BIT));
+
+    for(t = s->trans; t != NULL; t = t->next) {
+        if(!t->is_nil)
+            continue;
+        id = t->dest->id;
+        if((bitset[id / CHAR_BIT] & (1 << (id % CHAR_BIT))) == 0)
+            calc_nil_closure(t->dest, bitset);
+    }
+}
+
+static state_t * get_state(fa_list_t **state_map, len_string *state_set,
+                           state_t **nfa, fa_t *dfa, int *is_new)
+{
+    fa_list_t *l;
+    state_t *st;
+    size_t i, k;
+    int j, done_num = INT_MAX;
+
+    if(is_new != NULL)
+        *is_new = 0;
+
+    for(l = *state_map; l != NULL; l = l->next)
+        if(lstr_eq((len_string *) l->data1, state_set))
+            return l->state;
+
+    /* If we get here, the state isn't already in the list, so we make it: */
+    if(is_new != NULL)
+        *is_new = 1;
+    st = mkstate(dfa);
+
+    for(i = 0; i < state_set->len; ++i) {
+        if(state_set->s[i] == 0)
+            continue;
+
+        for(j = 0; j < CHAR_BIT; ++j)
+            if(state_set->s[i] & (1 << j)) {
+                k = i * CHAR_BIT + j;
+                if(nfa[k]->done_num != 0 && nfa[k]->done_num < done_num)
+                    done_num = nfa[k]->done_num;
+            }
+    }
+    if(done_num != INT_MAX)
+        st->done_num = done_num;
+
+    l = malloc_or_die(1, fa_list_t);
+    l->state = st;
+    l->data1 = lstrcat(state_set, NULL);
+    l->next = *state_map;
+    *state_map = l;
+
+    return st;
+}
+
+static void set_or(char *a, const char *b, size_t str_size)
+{
+    size_t i;
+
+    for(i = 0; i < str_size; ++i)
+        a[i] |= b[i];
+}
+
+static state_t * nfa_to_dfa(len_string *state_set, fa_t *dfa,
+                            fa_list_t **state_map, size_t str_size,
+                            const char *nil_closures, state_t **nfa)
+{
+    int is_new, i, k;
+    size_t j, n_unpacked = 0;
+    state_t *dfa_init = get_state(state_map, state_set, nfa, dfa, &is_new);
+    len_string *set = mk_blank_lstring(str_size);
+    state_t **unpacked = malloc_or_die(str_size * CHAR_BIT, state_t *);
+    state_t *st;
+    trans_t *t;
+
+    if(is_new) {
+
+        for(j = 0; j < str_size; ++j) {
+            if(!state_set->s[j])
+                continue;
+            for(k = 0; k < CHAR_BIT; ++k)
+                if(state_set->s[j] & (1 << k))
+                    unpacked[n_unpacked++] = nfa[j * CHAR_BIT + k];
+        }
+
+        for(i = 0; i < 256; ++i) {
+            memset(set->s, 0, str_size);
+            for(j = 0; j < n_unpacked; ++j) {
+                for(t = unpacked[j]->trans; t != NULL; t = t->next)
+                    if(!t->is_nil &&
+                       t->cond[j / CHAR_BIT] & (1 << (j % CHAR_BIT))) {
+                        k = t->dest->id;
+                        set_or(set->s, nil_closures + (k * str_size), str_size);
+                    }
+            }
+
+            st = nfa_to_dfa(state_set, dfa, state_map, str_size, nil_closures,
+                            nfa);
+
+            for(t = dfa_init->trans; t != NULL; t = t->next) {
+                if(t->dest == st) {
+                    t->cond[i / CHAR_BIT] |= 1 << (i % CHAR_BIT);
+                    break;
+                }
+            }
+
+            if(t == NULL) { /* No pre-existing transitions to st */
+                t = mktrans(dfa_init, st);
+                t->cond[i / CHAR_BIT] |= 1 << (i % CHAR_BIT);
+                t->next = dfa_init->trans;
+                dfa_init->trans = t;
+            }
+        }
+    }
+
+    free(set);
+    free(unpacked);
+    return dfa_init;
+}
+
+/* nfa_list->data2 is interpreted as a lstr_list_t * of start states, and
+ * dfa_list->data1 is interpreted as a len_string * start-state name. */
+fa_t * nfas_to_dfas(fa_t *nfa, fa_list_t *nfa_list, fa_list_t *dfa_list)
+{
+    fa_list_t *pn, *pd;
+    state_t *initstate, *st;
+    trans_t *t;
+    fa_t *dfa = mkfa();
+    state_t **nfa_arr;
+    char *nil_closures;
+    fa_list_t *state_map = NULL;
+    size_t set_size;
+    len_string *str;
+
+    for(pd = dfa_list; pd != NULL; pd = pd->next) {
+        pd->state = initstate = mkstate(nfa);
+
+        for(pn = nfa_list; pn != NULL; pn = pn->next) {
+            if(!lstr_in_list((len_string *) pd->data1,
+                             (lstr_list_t *) pn->data2))
+                continue;
+
+            t = mktrans(initstate, pn->state);
+            t->is_nil = 1;
+        }
+    }
+
+    set_size = (nfa->n_states + CHAR_BIT - 1) / CHAR_BIT;
+    nil_closures = malloc_or_die(set_size * nfa->n_states, char);
+    memset(nil_closures, 0, set_size * nfa->n_states);
+
+    for(st = nfa->first; st != NULL; st = st->next)
+        calc_nil_closure(st, nil_closures + (st->id * set_size));
+
+    nfa_arr = malloc_or_die(nfa->n_states, state_t *);
+    for(st = nfa->first; st != NULL; st = st->next)
+        nfa_arr[st->id] = st;
+
+    for(pd = dfa_list; pd != NULL; pd = pd->next) {
+        str = lstring_dupbuf(set_size,
+                             nil_closures + (pd->state->id * set_size));
+        pd->state = nfa_to_dfa(str, dfa, &state_map, set_size,
+                               nil_closures, nfa_arr);
+        free(str);
+    }
+
+    free(nil_closures);
+    free(nfa_arr);
+
+    return dfa;
 }
 
 void print_fa(FILE *f, fa_t *fa, state_t *initstate)
