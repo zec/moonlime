@@ -281,9 +281,9 @@ function write(inf, fa, f, fheader)
   local next_trans = 0
   local state_tbl = limefa.makeSuperTable(fa)
 
-  local ml_x = 'moonlime_fa ml_x[' .. (table.maxn(state_tbl) + 1) .. '] = {\n'
-  local ml_y = 'moonlime_trans ml_y[] = {\n'
-  local ml_st = 'int init_states[] = {\n'
+  local ml_x = 'static moonlime_fa ml_x[' .. (table.maxn(state_tbl) + 1) .. '] = {\n'
+  local ml_y = 'static moonlime_trans ml_y[] = {\n'
+  local ml_st = 'static int init_states[] = {\n'
   local ml_st_defs = ''
 
   local function mkBitset(str)
