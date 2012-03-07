@@ -87,8 +87,8 @@ tmpl_state *tstate = NULL;
             for(i = 0; i < 256; i += 8) {
                 val = 0;
                 for(j = 0; j < 8; ++j) {
-                    if(t->cond[(i*8+j)/ML_UINT_BIT] &
-                       (1 << ((i*8+j)%ML_UINT_BIT)))
+                    if(t->cond[(i+j)/ML_UINT_BIT] &
+                       (1 << ((i+j)%ML_UINT_BIT)))
                     val |= 1 << j;
                 }
                 fprintf(tstate->f, "%d%s", val, (i < 248) ? "," : "");
