@@ -213,7 +213,8 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
                                           ms->last_done_len,
                                           &(ms->curr_start_state));
                         yyreset_state(ms);
-                        break;
+                        i = 0;
+                        continue;
                     }
                     ++i;
                 }
