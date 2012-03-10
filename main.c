@@ -84,7 +84,7 @@ int main(int argc, char **argv)
                     continue;
 
                 slen = strlen(cout_name);
-                if(!strcmp(argv[i] + slen - 2, ".c")) {
+                if(!strcmp(cout_name + slen - 2, ".c")) {
                     if(new_hout_name != NULL)
                         free(new_hout_name);
 
