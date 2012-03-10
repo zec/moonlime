@@ -163,11 +163,11 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
 
         yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
                           &(ms->curr_start_state));
-        reset_state(ms);
+        yyreset_state(ms);
 
         while(ms->string_len > 0) {
             for(i = 0; i < ms->string_len; ++i) {
-                if(!run_char(ms, ms->buf[i], 0, i+1) ||
+                if(!yyrun_char(ms, ms->buf[i], 0, i+1) ||
                    i == ms->string_len - 1) {
                     if(ms->is_in_error || ms->last_done_num == 0) {
                         ms->is_in_error = 1;
@@ -187,7 +187,7 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
     }
 
     while(input < end) {
-        if(!run_char(ms, *input, 1, ms->string_len + 1)) { /* past a pattern */
+        if(!yyrun_char(ms, *input, 1, ms->string_len + 1)) { /* past pattern */
             if(ms->is_in_error)
                 return 0;
             if(ms->last_done_num == 0) { /* no pattern matches buf */
@@ -196,14 +196,14 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
             }
             yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
                               &(ms->curr_start_state));
-            reset_state(ms);
+            yyreset_state(ms);
 
             /* Re-lex remaining part of the buffer */
             done_relexing = 0;
             while(ms->string_len > 0 && !done_relexing) {
                 i = 0;
                 while(i < ms->string_len) {
-                    if(!run_char(ms, ms->buf[i], 0, i+1)) {
+                    if(!yyrun_char(ms, ms->buf[i], 0, i+1)) {
                         if(!ms->is_in_error && ms->last_done_num == 0)
                             ms->is_in_error = 1;
                         if(ms->is_in_error)
@@ -212,7 +212,7 @@ int %PREFIX%Read( void *lexer, char *input, size_t len )
                         yymoonlime_action(ms->last_done_num, ms->buf,
                                           ms->last_done_len,
                                           &(ms->curr_start_state));
-                        reset_state(ms);
+                        yyreset_state(ms);
                         break;
                     }
                     ++i;

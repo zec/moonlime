@@ -39,7 +39,7 @@ $(SAMPLES): %: %.o sample-runner.o
 	$(CC) -o $@ $< sample-runner.o
 
 sample01-hexdump.c sample02-testregexes.c sample03-testNFAregexes.c \
-  sample04-teststates.c: %.c: %.l $(PROG)
+  sample04-teststates.c: %.c: %.l $(PROG) tmpl.c
 	./$(PROG) $< -o $@
 
 clean:

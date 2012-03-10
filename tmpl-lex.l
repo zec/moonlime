@@ -130,7 +130,7 @@ tmpl_state *tstate = NULL;
 
     for(l = tstate->patterns; l != NULL; l = l->next) {
         code = (len_string *) l->data3;
-        fprintf(tstate->f, "case %d: {\n%.*s\n}\n", l->done_num,
+        fprintf(tstate->f, "case %d: {\n%.*s\n} break;\n", l->done_num,
                 (int) code->len, code->s);
     }
 }
