@@ -173,7 +173,7 @@ int main(int argc, char **argv)
         for(p = s.phead; p != NULL; p = p->next) {
             fa = single_regex_compile(p->rx, &initstate);
             printf("--- NFA %d:\n", ++i);
-            print_fa(stdout, fa, initstate);
+            print_fa(stdout, fa, "x");
             destroy_fa(fa);
         }
     }
@@ -185,11 +185,11 @@ int main(int argc, char **argv)
         tstate = &tms;
 
         printf("--- total NFA:\n");
-        print_fa(stdout, nfa, NULL);
+        print_fa(stdout, nfa, "nfa");
 
         printf("--- total DFA:\n");
         dfa = nfas_to_dfas(nfa, rxl, stsl);
-        print_fa(stdout, dfa, NULL);
+        print_fa(stdout, dfa, "dfa");
 
         tms.st = &s;
         tms.dfa = dfa;

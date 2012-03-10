@@ -541,7 +541,7 @@ fputs("\n", stdout);*/
     return dfa;
 }
 
-void print_fa(FILE *f, fa_t *fa, state_t *initstate)
+void print_fa(FILE *f, fa_t *fa, const char *name)
 {
     state_t *st;
     trans_t *tr;
@@ -552,18 +552,21 @@ void print_fa(FILE *f, fa_t *fa, state_t *initstate)
         return;
     }
 
-    for(st = fa->first; st != NULL; st = st->next) {
-        fprintf(f, "State %d%s:\n", st->id, (st == initstate) ? " [init]" : "");
-        if(st->done_num != 0)
-            fprintf(f, "  done_num = %d\n", st->done_num);
+    fprintf(f, "digraph %s {\n", (name == NULL) ? "fa" : name);
 
-        fputs("  Transitions:\n", f);
+    for(st = fa->first; st != NULL; st = st->next) {
+        if(st->done_num != 0)
+            fprintf(f, "st%d [label=\"st%d\\ndone=%d\"];\n", st->id, st->id,
+                    st->done_num);
+        else
+            fprintf(f, "st%d;\n", st->id);
+
         for(tr = st->trans; tr != NULL; tr = tr->next) {
+            fprintf(f, "  st%d -> st%d [label=\"", st->id,
+                       (tr->dest != NULL) ? tr->dest->id : -1);
             if(tr->is_nil)
-                fprintf(f, "    [nil] -> %d\n", (tr->dest != NULL) ?
-                                                tr->dest->id : -1);
+                fputs("[nil]", f);
             else {
-                fputs("    ", f);
                 for(i = 0; i < CLASS_SZ; ++i) {
                     if(!tr->cond[i])
                         continue;
@@ -572,17 +575,23 @@ void print_fa(FILE *f, fa_t *fa, state_t *initstate)
                             continue;
                         k = (i * ML_UINT_BIT) + j;
                         if(k == 10)
-                            fputs("\\n", f);
+                            fputs("\\\\n", f);
                         else if(k < 0x20 || k >= 0x7f)
-                            fprintf(f, "\\x%02x", k & 0xff);
-                        else if(k == ' ' || k == '\\')
-                            fprintf(f, "\\%c", k);
+                            fprintf(f, "\\\\x%02x", k & 0xff);
+                        else if(k == ' ')
+                            fputs("\\\\ ", f);
+                        else if(k == '\\')
+                            fputs("\\\\\\\\", f);
+                        else if(k == '\"')
+                            fputs("\\\"", f);
                         else
                             fputc(k, f);
                     }
                 }
-                fprintf(f, " -> %d\n", (tr->dest != NULL) ? tr->dest->id : -1);
             }
+            fputs("\"];\n", f);
         }
     }
+
+    fputs("}\n", f);
 }
