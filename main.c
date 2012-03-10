@@ -64,8 +64,11 @@ int main(int argc, char **argv)
     char *new_hout_name = NULL;
     const char *ctmpl_name = "tmpl.c";
     const char *htmpl_name = "tmpl.h";
-    int i;
+    int i, verbose = 0;
     size_t slen;
+    fa_list_t *rxl, *stsl;
+    fa_t *nfa, *dfa;
+    tmpl_state tms;
 
     for(i = 1; i < argc; ++i) {
         if(!strcmp(argv[i], "-o")) {
@@ -101,7 +104,9 @@ int main(int argc, char **argv)
                 new_hout_name = NULL;
                 hout_name = argv[i];
             }
-        } else
+        } else if(!strcmp(argv[i], "-v"))
+            verbose = 1;
+        else
             lexer_name = argv[i];
     }
 
@@ -118,6 +123,8 @@ int main(int argc, char **argv)
      * following is a little simplified for now.
      */
     init_lexer_lexer_state(&s);
+    if(verbose)
+        s.verb = stderr;
     file_state = &s;
 
     if((f = fopen(lexer_name, "r")) == NULL) {
@@ -164,63 +171,52 @@ int main(int argc, char **argv)
         s.states->next = NULL;
     }
 
-    if(0) {
-        pat_entry_t *p;
-        fa_t *fa;
-        state_t *initstate;
-        int i = 0;
+    rxl = mk_regex_list(&s);
+    stsl = mk_start_state_list(&s);
+    nfa = multi_regex_compile(rxl);
+    tstate = &tms;
 
-        for(p = s.phead; p != NULL; p = p->next) {
-            fa = single_regex_compile(p->rx, &initstate);
-            printf("--- NFA %d:\n", ++i);
-            print_fa(stdout, fa, "x");
-            destroy_fa(fa);
-        }
+    if(verbose) {
+        fputs("--- total NFA:\n", stderr);
+        print_fa(stderr, nfa, "nfa");
     }
 
-    {
-        fa_list_t *rxl = mk_regex_list(&s), *stsl = mk_start_state_list(&s);
-        fa_t *nfa = multi_regex_compile(rxl), *dfa;
-        tmpl_state tms;
-        tstate = &tms;
+    dfa = nfas_to_dfas(nfa, rxl, stsl);
 
-        printf("--- total NFA:\n");
-        print_fa(stdout, nfa, "nfa");
+    if(verbose) {
+        fputs("--- total DFA:\n", stderr);
+        print_fa(stderr, dfa, "dfa");
+    }
 
-        printf("--- total DFA:\n");
-        dfa = nfas_to_dfas(nfa, rxl, stsl);
-        print_fa(stdout, dfa, "dfa");
+    tms.st = &s;
+    tms.dfa = dfa;
+    tms.patterns = rxl;
+    tms.start_states = stsl;
 
-        tms.st = &s;
-        tms.dfa = dfa;
-        tms.patterns = rxl;
-        tms.start_states = stsl;
+    if((f = fopen(cout_name, "w")) == NULL) {
+        fprintf(stderr, "Can\'t open %s for writing\n", cout_name);
+        return 1;
+    }
 
-        if((f = fopen(cout_name, "w")) == NULL) {
-            fprintf(stderr, "Can\'t open %s for writing\n", cout_name);
+    tms.f = f;
+    run_tmpl(&tms, ctmpl_name);
+    fclose(f);
+
+    if(hout_name != NULL) {
+        if((f = fopen(hout_name, "w")) == NULL) {
+            fprintf(stderr, "Can\'t open %s for writing\n", hout_name);
             return 1;
         }
 
         tms.f = f;
-        run_tmpl(&tms, ctmpl_name);
+        run_tmpl(&tms, htmpl_name);
         fclose(f);
-
-        if(hout_name != NULL) {
-            if((f = fopen(hout_name, "w")) == NULL) {
-                fprintf(stderr, "Can\'t open %s for writing\n", hout_name);
-                return 1;
-            }
-
-            tms.f = f;
-            run_tmpl(&tms, htmpl_name);
-            fclose(f);
-        }
-
-        free_fa_list(rxl);
-        free_fa_list(stsl);
-        destroy_fa(nfa);
-        destroy_fa(dfa);
     }
+
+    free_fa_list(rxl);
+    free_fa_list(stsl);
+    destroy_fa(nfa);
+    destroy_fa(dfa);
 
     return 0;
 }

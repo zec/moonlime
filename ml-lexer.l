@@ -65,6 +65,8 @@ typedef struct {
     len_string *initstate; /* Initial start state */
 
     len_string *prefix; /* A prefix to use for names in the generated lexer. */
+
+    FILE *verb; /* An optional file to print verbose information */
 } lexer_lexer_state;
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
@@ -100,6 +102,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->states = st->curr_st = NULL;
     st->regex_nest_depth = st->c_nest_depth = 0;
     st->npats = 0;
+    st->verb = NULL;
 }
 
 lexer_lexer_state *file_state;
@@ -223,6 +226,10 @@ static const char * directive_name(directive_kind dir)
     return NULL;
 }
 #endif
+
+#define vfprintf if(file_state->verb) fprintf
+#define vfputs(s) if(file_state->verb) fputs((s), file_state->verb)
+#define LEN ((int) yylen)
 }
 
 %initstate MAIN
@@ -290,18 +297,14 @@ static const char * directive_name(directive_kind dir)
     }
 
     if(!still_valid) {
-        fputs("Invalid start-state selector: ", stderr);
-        fwrite(yytext, 1, yylen, stderr);
-        fputs("\n", stderr);
+        fprintf(stderr, "Invalid start-state selector: %.*s\n", LEN, yytext);
         exit(1);
     }
 
     file_state->curr_st = add_to_list(yytext, yylen, file_state->curr_st);
 
 #ifdef LEXER_DBG
-    fputs("Start-state selector \"", stdout);
-    fwrite(yytext, 1, yylen, stdout);
-    fputs("\"\n", stdout);
+    vfprintf(file_state->verb, "Start-state selector \"%.*s\"\n", LEN, yytext);
 #endif
 }
 
@@ -314,7 +317,7 @@ static const char * directive_name(directive_kind dir)
 // Any character
 <MAIN,IN_REGEX> [.] {
 #ifdef LEXER_DBG
-    printf("Any\n");
+    vfputs("Any\n");
 #endif
     add_simple_regex(file_state, mk_any_rx());
     YYSTART(IN_REGEX);
@@ -323,7 +326,8 @@ static const char * directive_name(directive_kind dir)
 // Character class
 <MAIN,IN_REGEX> \[\^? {
 #ifdef LEXER_DBG
-    printf("Character class%s:\n", (yylen > 1) ? " (inverted)" : "");
+    vfprintf(file_state->verb, "Character class%s:\n",
+             (yylen > 1) ? " (inverted)" : "");
 #endif
     add_simple_regex(file_state, mk_char_class_rx(yylen > 1));
     YYSTART(IN_CHARCLASS);
@@ -331,22 +335,23 @@ static const char * directive_name(directive_kind dir)
 
 <IN_CHARCLASS> \\(x[0123456789abcdefABCDEF]{2}|[^x]) {
 #ifdef LEXER_DBG
-    printf(yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
-           yytext[1], yytext[2], yytext[3]);
+    vfprintf(file_state->verb,
+             yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
+             yytext[1], yytext[2], yytext[3]);
 #endif
     add_to_char_class(file_state->curr_rx, unescape_rx_escape(yytext));
 }
 
 <IN_CHARCLASS> [^\\\]]|\n {
 #ifdef LEXER_DBG
-    printf(" \'%c\'\n", yytext[0]);
+    vfprintf(file_state->verb, " \'%c\'\n", yytext[0]);
 #endif
     add_to_char_class(file_state->curr_rx, yytext[0]);
 }
 
 <IN_CHARCLASS> \] {
 #ifdef LEXER_DBG
-    printf("End character class\n");
+    vfprintf(file_state->verb, "End character class\n");
 #endif
     YYSTART(IN_REGEX);
 }
@@ -356,7 +361,7 @@ static const char * directive_name(directive_kind dir)
     regex_t *new_rx, *paren;
     ++file_state->regex_nest_depth;
 #ifdef LEXER_DBG
-    printf("(\n");
+    vfputs("(\n");
 #endif
     if(file_state->curr_rx != NULL) {
         if(file_state->rx_stack == NULL) {
@@ -393,7 +398,7 @@ static const char * directive_name(directive_kind dir)
 <IN_REGEX> [)] {
     regex_t *re, *top;
     if(--file_state->regex_nest_depth < 0) {
-        fprintf(stderr, "Improper parentheses nesting!\n");
+        fputs("Improper parentheses nesting!\n", stderr);
         exit(1);
     }
 
@@ -426,8 +431,9 @@ static const char * directive_name(directive_kind dir)
 // Character escape
 <MAIN,IN_REGEX> \\(x[0123456789abcdefABCDEF]{2}|[^x]) {
 #ifdef LEXER_DBG
-    printf((yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
-           yytext[1], yytext[2], yytext[3]);
+    vfprintf(file_state->verb,
+             (yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
+             yytext[1], yytext[2], yytext[3]);
 #endif
 
     add_simple_regex(file_state, mk_char_rx(unescape_rx_escape(yytext)));
@@ -491,9 +497,7 @@ static const char * directive_name(directive_kind dir)
 // Repetition operators
 <IN_REGEX> [?*+] {
 #ifdef LEXER_DBG
-    printf("Repetition: ");
-    fwrite(yytext, 1, yylen, stdout);
-    printf("\n");
+    vfprintf(file_state->verb, "Repetition: %.*s\n", LEN, yytext);
 #endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
@@ -515,7 +519,7 @@ static const char * directive_name(directive_kind dir)
     int n;
 
 #ifdef LEXER_DBG
-    printf("rep1\n");
+    vfputs("rep1\n");
 #endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
@@ -535,7 +539,7 @@ static const char * directive_name(directive_kind dir)
     char *ptr = (char *)(yytext+1);
 
 #ifdef LEXER_DBG
-    printf("rep2\n");
+    vfputs("rep2\n");
 #endif
     if(file_state->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
@@ -556,10 +560,10 @@ static const char * directive_name(directive_kind dir)
 <IN_REGEX> [{] {
     regex_t *re, *next;
 #ifdef LEXER_DBG
-    printf("Start action code\n");
+    vfputs("Start action code\n");
 #endif
     if(file_state->regex_nest_depth > 0) {
-        fprintf(stderr, "Code improperly contained inside parentheses!\n");
+        fputs("Code improperly contained inside parentheses!\n", stderr);
         exit(1);
     }
 
@@ -630,11 +634,13 @@ static const char * directive_name(directive_kind dir)
     if(--file_state->c_nest_depth == 0) {
         switch(file_state->dir) {
           case D_NONE:
-            printf("Pattern:\n");
-            print_regex_tree(stdout, file_state->curr_rx);
-            printf("Code associated with pattern: {\n");
-            lstr_fwrite(file_state->code, stdout);
-            fputs("\n}\n", stdout);
+            vfprintf(file_state->verb, "Pattern:\n");
+            if(file_state->verb != NULL)
+                print_regex_tree(file_state->verb, file_state->curr_rx);
+            vfputs("Code associated with pattern: {\n");
+            if(file_state->verb != NULL)
+                lstr_fwrite(file_state->code, file_state->verb);
+            vfputs("\n}\n");
 
             ent = malloc_or_die(1, pat_entry_t);
 
@@ -658,9 +664,10 @@ static const char * directive_name(directive_kind dir)
             break;
 
           case D_HEADER:
-            printf("Header: {\n");
-            lstr_fwrite(file_state->code, stdout);
-            fputs("\n}\n", stdout);
+            vfputs("Header: {\n");
+            if(file_state->verb != NULL)
+                lstr_fwrite(file_state->code, file_state->verb);
+            vfputs("\n}\n");
 
             if(file_state->header != NULL)
                 free(file_state->header);
@@ -668,9 +675,10 @@ static const char * directive_name(directive_kind dir)
             break;
 
           case D_TOP:
-            printf("Top: {\n");
-            lstr_fwrite(file_state->code, stdout);
-            fputs("\n}\n", stdout);
+            vfputs("Top: {\n");
+            if(file_state->verb != NULL)
+                lstr_fwrite(file_state->code, file_state->verb);
+            vfputs("\n}\n");
 
             if(file_state->top != NULL)
                 free(file_state->top);
@@ -706,16 +714,13 @@ static const char * directive_name(directive_kind dir)
 <PRE_C_TOKEN>[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]
 [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* {
 #ifdef LEXER_DBG
-    printf("Directive \'%s\': ", directive_name(file_state->dir));
-    fwrite(yytext, 1, yylen, stdout);
-    fputs("\n", stdout);
+    vfprintf(file_state->verb, "Directive \'%s\': %.*s\n",
+             directive_name(file_state->dir), LEN, yytext);
 #endif
 
     switch(file_state->dir) {
       case D_STATE:
-        fputs("%state directive: ", stdout);
-        fwrite(yytext, 1, yylen, stdout);
-        fputs("\n", stdout);
+        vfprintf(file_state->verb, "%%state directive: %.*s\n", LEN, yytext);
 
         file_state->states = add_to_list(yytext, yylen, file_state->states);
 
@@ -754,7 +759,7 @@ static const char * directive_name(directive_kind dir)
 // Catch-all single-character regexes
 <MAIN,IN_REGEX> [^{\\\])?*+<] {
 #ifdef LEXER_DBG
-    printf("Char \'%c\'\n", yytext[0]);
+    vfprintf(file_state->verb, "Char \'%c\'\n", yytext[0]);
 #endif
     add_simple_regex(file_state, mk_char_rx(yytext[0]));
     YYSTART(IN_REGEX);
