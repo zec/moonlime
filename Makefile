@@ -1,5 +1,5 @@
 PROG=moonlime
-OBJS=ml-lexer.o main.o utils.o regex.o fa.o tmpl-lex.o
+OBJS=mllexgen.o main.o utils.o regex.o fa.o tmlexgen.o
 HEADER_DEPS=utils.h regex.h fa.h
 
 SAMPLES=sample01-hexdump sample02-testregexes sample03-testNFAregexes
@@ -10,7 +10,7 @@ CFLAGS=-Wall -Werror
 
 all: $(PROG)
 
-.PHONY: all samples clean
+.PHONY: all bootstrap-prep samples clean
 
 .PRECIOUS: %.c
 
@@ -21,17 +21,19 @@ $(PROG): $(OBJS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 fa.o: utils.h regex.h fa.h
-main.o: ml-lexer.c utils.h fa.h tmpl-lex.c
-ml-lexer.o: utils.h regex.h
+main.o: mllexgen.h utils.h fa.h tmlexgen.h
+mllexgen.o: utils.h regex.h
 regex.o: utils.h regex.h
-tmpl-lex.o: utils.h fa.h ml-lexer.c
+tmlexgen.o: utils.h fa.h mllexgen.h
 utils.o: utils.h
 
-ml-lexer.c: ml-lexer.l
-	ml-old/moonlime $< -o $@ -i
+bootstrap-prep: ml-lexer.c tmpl-lex.c
 
-tmpl-lex.c: tmpl-lex.l
-	ml-old/moonlime $< -o $@ -i
+ml-lexer.c: ml-lexer.l $(PROG)
+	./$(PROG) $< -o $@ -i
+
+tmpl-lex.c: tmpl-lex.l $(PROG)
+	./$(PROG) $< -o $@ -i
 
 samples: $(SAMPLES)
 

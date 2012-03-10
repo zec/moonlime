@@ -35,11 +35,11 @@
 #endif
 
 #ifndef ML_ML_LEXER_H
-#include "ml-lexer.h"
+#include "mllexgen.h"
 #endif
 
 #ifndef ML_TMPL_LEX_H
-#include "tmpl-lex.h"
+#include "tmlexgen.h"
 #endif
 
 #ifndef ML_FA_H
