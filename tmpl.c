@@ -1,3 +1,6 @@
+/* The default lexical-scanner template for Moonlime. Terms under which the
+ * generated code may be distributed, modified, etc. are provided by the
+ * lexer-writer below. */
 
 %HEADER%
 
