@@ -1,10 +1,8 @@
 #!/usr/bin/lua
 -- Copyright © 2012 Zachary Catlin. See LICENSE for terms.
 
--- In the source tree, the source files for the packages we want to load
--- are in the same directory as this file; when installed onto a system,
--- they will probably be in a different directory altogether.
--- Accordingly, the installation script will modify the following line:
+-- The source files for the packages we want to load are in the same directory
+-- as this file:
 package.path = string.gsub(arg[0], '[^/\\]*$', '') .. '?.lua'
 
 local argc, i = table.maxn(arg), 1

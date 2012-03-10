@@ -1,5 +1,7 @@
-/tmp*
 *.o
+/moonlime
+/*-lex*.[ch]
+
 /sample[0-9]*
 !/sample[0-9]*.l
 
