@@ -58,7 +58,7 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
 
     ms->is_in_error = 0;
     ms->curr_state = yy_init_states[YY_INITSTATE];
-    ms->curr_start_state = 0;
+    ms->curr_start_state = YY_INITSTATE;
     ms->last_done_num = 0;
     ms->last_done_len = 0;
 
