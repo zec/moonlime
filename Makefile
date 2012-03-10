@@ -29,10 +29,10 @@ utils.o: utils.h
 
 bootstrap-prep: ml-lexer.c tmpl-lex.c
 
-ml-lexer.c: ml-lexer.l $(PROG)
+ml-lexer.c: ml-lexer.l $(PROG) tmpl.c tmpl.h
 	./$(PROG) $< -o $@ -i
 
-tmpl-lex.c: tmpl-lex.l $(PROG)
+tmpl-lex.c: tmpl-lex.l $(PROG) tmpl.c tmpl.h
 	./$(PROG) $< -o $@ -i
 
 samples: $(SAMPLES)
