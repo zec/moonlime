@@ -1,6 +1,5 @@
 PROG=moonlime
 OBJS=mllexgen.o main.o utils.o regex.o fa.o tmlexgen.o
-HEADER_DEPS=utils.h regex.h fa.h
 
 SAMPLES=sample01-hexdump sample02-testregexes sample03-testNFAregexes
 SAMPLES+= sample04-teststates
