@@ -1,5 +1,5 @@
 PROG=moonlime
-OBJS=mllexgen.o main.o utils.o regex.o fa.o tmlexgen.o
+OBJS=mllexgen.o utils.o regex.o fa.o tmlexgen.o
 
 SAMPLES=sample01-hexdump sample02-testregexes sample03-testNFAregexes
 SAMPLES+= sample04-teststates
@@ -10,17 +10,35 @@ CFLAGS=-Wall -Werror
 ASCIIDOC=asciidoc
 A2X=a2x
 
+INSTALL=install
+
+# Install directories
+PREFIX=/usr/local
+BINDIR=$(PREFIX)/bin
+SHAREDIR=$(PREFIX)/share/moonlime
+DOCDIR=$(PREFIX)/share/doc/moonlime
+MANDIR=$(PREFIX)/share/man/man1
+
+
+local: $(PROG)-loc
+
 all: $(PROG)
 
-.PHONY: all bootstrap-prep samples doc clean
+.PHONY: local all bootstrap-prep samples doc install install-all clean
 
 .PRECIOUS: %.c
 
-$(PROG): $(OBJS)
-	$(CC) -o $@ $(OBJS)
+$(PROG)-loc: main-loc.o $(OBJS)
+	$(CC) -o $@ main-loc.o $(OBJS)
+
+$(PROG): main.o $(OBJS)
+	$(CC) -o $@ main.o $(OBJS)
 
 .c.o:
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ -D"SHAREDIR=\"$(SHAREDIR)\"" $<
+
+main-loc.o: main.c mllexgen.h utils.h fa.h tmlexgen.h
+	$(CC) -c $(CFLAGS) -o $@ -D"SHAREDIR=\"$$(pwd)\"" main.c
 
 fa.o: utils.h regex.h fa.h
 main.o: mllexgen.h utils.h fa.h tmlexgen.h
@@ -56,6 +74,17 @@ moonlime.html: moonlime.txt rpn.l
 
 moonlime.1: moonlime.txt rpn.l
 	$(A2X) -f manpage $<
+
+install: all
+	$(INSTALL) $(PROG) $(BINDIR)
+	mkdir -p $(SHAREDIR)
+	$(INSTALL) tmpl.c $(SHAREDIR)
+	$(INSTALL) tmpl.h $(SHAREDIR)
+
+install-all: install doc
+	mkdir -p $(MANDIR) $(DOCDIR)
+	$(INSTALL) moonlime.1 $(MANDIR)
+	$(INSTALL) moonlime.html $(DOCDIR)
 
 clean:
 	rm -f $(PROG) $(SAMPLES) sample[0-9]*.c *-lex*.[ch] *.o *.html *.1

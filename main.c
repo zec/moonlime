@@ -62,8 +62,8 @@ int main(int argc, char **argv)
     const char *cout_name = NULL;
     const char *hout_name = NULL;
     char *new_hout_name = NULL;
-    const char *ctmpl_name = "tmpl.c";
-    const char *htmpl_name = "tmpl.h";
+    const char *ctmpl_name = SHAREDIR "tmpl.c";
+    const char *htmpl_name = SHAREDIR "tmpl.h";
     int i, verbose = 0;
     size_t slen;
     fa_list_t *rxl, *stsl;

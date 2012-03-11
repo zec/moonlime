@@ -1,5 +1,6 @@
 *.o
 /moonlime
+/moonlime-loc
 /*-lex*.[ch]
 
 /sample[0-9]*
