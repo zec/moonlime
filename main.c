@@ -125,7 +125,6 @@ int main(int argc, char **argv)
     init_lexer_lexer_state(&s);
     if(verbose)
         s.verb = stderr;
-    file_state = &s;
 
     if((f = fopen(lexer_name, "r")) == NULL) {
         fprintf(stderr, "Couldn\'t open file \'%s\'\n", argv[1]);
@@ -141,7 +140,7 @@ int main(int argc, char **argv)
         num_in = fread(buf, 1, sizeof(buf), f);
 
         if(num_in != 0) {
-            if(!MoonlimeRead(lexer, buf, num_in)) {
+            if(!MoonlimeRead(lexer, buf, num_in, &s)) {
                 fputs("An error occurred during lexing!\n", stderr);
                 MoonlimeDestroy(lexer);
                 return 1;
@@ -155,7 +154,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if(!MoonlimeRead(lexer, NULL, 0)) {
+    if(!MoonlimeRead(lexer, NULL, 0, &s)) {
         fputs("An error occurred during lexing near EOF!\n", stderr);
         MoonlimeDestroy(lexer);
         return 1;

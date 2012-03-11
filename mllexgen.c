@@ -69,8 +69,6 @@ typedef struct {
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
 
-extern lexer_lexer_state *file_state;
-
 
 
 #ifndef ML_STDIO_H
@@ -228,8 +226,8 @@ static const char * directive_name(directive_kind dir)
 }
 #endif
 
-#define vfprintf if(file_state->verb) fprintf
-#define vfputs(s) if(file_state->verb) fputs((s), file_state->verb)
+#define vfprintf if(yydata->verb) fprintf
+#define vfputs(s) if(yydata->verb) fputs((s), yydata->verb)
 #define LEN ((int) yylen)
 
 
@@ -501,7 +499,7 @@ void MoonlimeDestroy( Moonlime_state *lexer )
 }
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state );
+                              int *yy_start_state ,  lexer_lexer_state *  yydata);
 
 static int yyrun_char(yyml_state *ms, char c, int add_to_buf, int len)
 {
@@ -557,7 +555,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
+int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len ,  lexer_lexer_state *  data )
 {
     int done_relexing, i;
     char *end = input + len;
@@ -576,7 +574,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
         }
 
         yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                          &(ms->curr_start_state) );
+                          &(ms->curr_start_state) , data);
         yyreset_state(ms);
 
         while(ms->string_len > 0) {
@@ -590,7 +588,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
 
                     yymoonlime_action(ms->last_done_num, ms->buf,
                                       ms->last_done_len,
-                                      &(ms->curr_start_state) );
+                                      &(ms->curr_start_state) , data);
                     yyreset_state(ms);
                     break;
                 }
@@ -609,7 +607,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
                 return 0;
             }
             yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                              &(ms->curr_start_state) );
+                              &(ms->curr_start_state) , data);
             yyreset_state(ms);
 
             /* Re-lex remaining part of the buffer */
@@ -625,7 +623,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
 
                         yymoonlime_action(ms->last_done_num, ms->buf,
                                           ms->last_done_len,
-                                          &(ms->curr_start_state) );
+                                          &(ms->curr_start_state) , data);
                         yyreset_state(ms);
                         i = 0;
                         continue;
@@ -646,7 +644,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
 #define YYSTART(x) do { *yy_start_state = YY_STATE_ ## x ; } while(0)
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state )
+                              int *yy_start_state ,  lexer_lexer_state *  yydata)
 {
     switch(done_num) {
 case 1: {
@@ -655,27 +653,27 @@ case 1: {
 case 2: {
 
     if(yylen == 4 && !strncmp(yytext, "%top", yylen)) {
-        file_state->dir = D_TOP;
+        yydata->dir = D_TOP;
         YYSTART(PRE_C_CODE);
 
     } else if(yylen == 7 && !strncmp(yytext, "%header", yylen)) {
-        file_state->dir = D_HEADER;
+        yydata->dir = D_HEADER;
         YYSTART(PRE_C_CODE);
 
     } else if(yylen == 6 && !strncmp(yytext, "%state", yylen)) {
-        file_state->dir = D_STATE;
+        yydata->dir = D_STATE;
         YYSTART(PRE_C_TOKEN);
 
     } else if(yylen == 10 && !strncmp(yytext, "%initstate", yylen)) {
-        file_state->dir = D_INITSTATE;
+        yydata->dir = D_INITSTATE;
         YYSTART(PRE_C_TOKEN);
 
     } else if(yylen == 7 && !strncmp(yytext, "%prefix", yylen)) {
-        file_state->dir = D_PREFIX;
+        yydata->dir = D_PREFIX;
         YYSTART(PRE_C_TOKEN);
 
     } else if(yylen == 9 && !strncmp(yytext, "%userdata", yylen)) {
-        file_state->dir = D_USTATE_TYPE;
+        yydata->dir = D_USTATE_TYPE;
         YYSTART(PRE_C_CODE);
 
     } else {
@@ -711,10 +709,10 @@ case 4: {
         exit(1);
     }
 
-    file_state->curr_st = add_to_list(yytext, yylen, file_state->curr_st);
+    yydata->curr_st = add_to_list(yytext, yylen, yydata->curr_st);
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "Start-state selector \"%.*s\"\n", LEN, yytext);
+    vfprintf(yydata->verb, "Start-state selector \"%.*s\"\n", LEN, yytext);
 #endif
 
 } break;
@@ -729,42 +727,42 @@ case 7: {
 #ifdef LEXER_DBG
     vfputs("Any\n");
 #endif
-    add_simple_regex(file_state, mk_any_rx());
+    add_simple_regex(yydata, mk_any_rx());
     YYSTART(IN_REGEX);
 
 } break;
 case 8: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "Character class%s:\n",
+    vfprintf(yydata->verb, "Character class%s:\n",
              (yylen > 1) ? " (inverted)" : "");
 #endif
-    add_simple_regex(file_state, mk_char_class_rx(yylen > 1));
+    add_simple_regex(yydata, mk_char_class_rx(yylen > 1));
     YYSTART(IN_CHARCLASS);
 
 } break;
 case 9: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb,
+    vfprintf(yydata->verb,
              yytext[1] != 'x' ? " \'\\%c\'\n" : " \'\\%c%c%c\'\n",
              yytext[1], yytext[2], yytext[3]);
 #endif
-    add_to_char_class(file_state->curr_rx, unescape_rx_escape(yytext));
+    add_to_char_class(yydata->curr_rx, unescape_rx_escape(yytext));
 
 } break;
 case 10: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, " \'%c\'\n", yytext[0]);
+    vfprintf(yydata->verb, " \'%c\'\n", yytext[0]);
 #endif
-    add_to_char_class(file_state->curr_rx, yytext[0]);
+    add_to_char_class(yydata->curr_rx, yytext[0]);
 
 } break;
 case 11: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "End character class\n");
+    vfprintf(yydata->verb, "End character class\n");
 #endif
     YYSTART(IN_REGEX);
 
@@ -772,54 +770,54 @@ case 11: {
 case 12: {
 
     regex_t *new_rx, *paren;
-    ++file_state->regex_nest_depth;
+    ++yydata->regex_nest_depth;
 #ifdef LEXER_DBG
     vfputs("(\n");
 #endif
-    if(file_state->curr_rx != NULL) {
-        if(file_state->rx_stack == NULL) {
+    if(yydata->curr_rx != NULL) {
+        if(yydata->rx_stack == NULL) {
             new_rx = mk_concat_rx(0);
-            add_enc_rx(new_rx, file_state->curr_rx);
-            file_state->rx_stack = new_rx;
-        } else switch(file_state->rx_stack->type) {
+            add_enc_rx(new_rx, yydata->curr_rx);
+            yydata->rx_stack = new_rx;
+        } else switch(yydata->rx_stack->type) {
           case R_CONCAT:
           case R_OPTION:
-            add_enc_rx(file_state->rx_stack, file_state->curr_rx);
+            add_enc_rx(yydata->rx_stack, yydata->curr_rx);
             break;
 
           case R_PAREN:
             new_rx = mk_concat_rx(0);
-            add_enc_rx(new_rx, file_state->curr_rx);
-            new_rx->next = file_state->rx_stack;
-            file_state->rx_stack = new_rx;
+            add_enc_rx(new_rx, yydata->curr_rx);
+            new_rx->next = yydata->rx_stack;
+            yydata->rx_stack = new_rx;
             break;
 
           default:
             fprintf(stderr, "Invalid stack state %d\n",
-                    file_state->rx_stack->type);
+                    yydata->rx_stack->type);
             exit(1);
         }
     }
 
     paren = mk_paren_rx();
-    paren->next = file_state->rx_stack;
-    file_state->rx_stack = paren;
-    file_state->curr_rx = NULL;
+    paren->next = yydata->rx_stack;
+    yydata->rx_stack = paren;
+    yydata->curr_rx = NULL;
     YYSTART(IN_REGEX);
 
 } break;
 case 13: {
 
     regex_t *re, *top;
-    if(--file_state->regex_nest_depth < 0) {
+    if(--yydata->regex_nest_depth < 0) {
         fputs("Improper parentheses nesting!\n", stderr);
         exit(1);
     }
 
-    re = file_state->curr_rx;
-    top = file_state->rx_stack;
+    re = yydata->curr_rx;
+    top = yydata->rx_stack;
     if(top != NULL)
-        file_state->rx_stack = top->next;
+        yydata->rx_stack = top->next;
 
     while(top != NULL && top->type != R_PAREN) {
         if(re != NULL)
@@ -828,9 +826,9 @@ case 13: {
             add_enc_rx(top, mk_zero_rx());
 
         re = top;
-        top = file_state->rx_stack;
+        top = yydata->rx_stack;
         if(top != NULL)
-            file_state->rx_stack = top->next;
+            yydata->rx_stack = top->next;
     }
 
     if(top == NULL) {
@@ -839,18 +837,18 @@ case 13: {
     } else
         free_regex_tree(top);
 
-    file_state->curr_rx = re;
+    yydata->curr_rx = re;
 
 } break;
 case 14: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb,
+    vfprintf(yydata->verb,
              (yytext[1] != 'x') ? "Char \'\\%c\'\n" : "Char \'\\%c%c%c\'\n",
              yytext[1], yytext[2], yytext[3]);
 #endif
 
-    add_simple_regex(file_state, mk_char_rx(unescape_rx_escape(yytext)));
+    add_simple_regex(yydata, mk_char_rx(unescape_rx_escape(yytext)));
     YYSTART(IN_REGEX);
 
 } break;
@@ -860,13 +858,13 @@ case 15: {
 #ifdef LEXER_DBG
     printf("|\n");
 #endif
-    re = file_state->curr_rx;
+    re = yydata->curr_rx;
     if(re == NULL)
         re = mk_zero_rx();
 
-    top = file_state->rx_stack;
+    top = yydata->rx_stack;
     if(top != NULL)
-        file_state->rx_stack = top->next;
+        yydata->rx_stack = top->next;
 
     if(top == NULL) {
         top = mk_option_rx();
@@ -879,16 +877,16 @@ case 15: {
         } else
             free_regex_tree(re);
 
-        next = file_state->rx_stack;
+        next = yydata->rx_stack;
         if(next != NULL)
-            file_state->rx_stack = next->next;
+            yydata->rx_stack = next->next;
 
         if(next != NULL && next->type == R_OPTION) {
             add_enc_rx(next, top);
             top = next;
         } else {
             if(next != NULL) {
-                file_state->rx_stack = next;
+                yydata->rx_stack = next;
             }
             next = mk_option_rx();
             add_enc_rx(next, top);
@@ -896,14 +894,14 @@ case 15: {
         }
     } else { /* top->type == R_PAREN */
         if(top != NULL)
-            file_state->rx_stack = top;
+            yydata->rx_stack = top;
         top = mk_option_rx();
         add_enc_rx(top, re);
     }
 
-    top->next = file_state->rx_stack;
-    file_state->rx_stack = top;
-    file_state->curr_rx = NULL;
+    top->next = yydata->rx_stack;
+    yydata->rx_stack = top;
+    yydata->curr_rx = NULL;
 
     YYSTART(IN_REGEX);
 
@@ -911,21 +909,21 @@ case 15: {
 case 16: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "Repetition: %.*s\n", LEN, yytext);
+    vfprintf(yydata->verb, "Repetition: %.*s\n", LEN, yytext);
 #endif
-    if(file_state->curr_rx == NULL) {
+    if(yydata->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
     }
     switch(yytext[0]) {
       case '?':
-        file_state->curr_rx = mk_maybe_rx(file_state->curr_rx);
+        yydata->curr_rx = mk_maybe_rx(yydata->curr_rx);
         break;
       case '*':
-        file_state->curr_rx = mk_star_rx(file_state->curr_rx);
+        yydata->curr_rx = mk_star_rx(yydata->curr_rx);
         break;
       case '+':
-        file_state->curr_rx = mk_plus_rx(file_state->curr_rx);
+        yydata->curr_rx = mk_plus_rx(yydata->curr_rx);
     }
 
 } break;
@@ -936,7 +934,7 @@ case 17: {
 #ifdef LEXER_DBG
     vfputs("rep1\n");
 #endif
-    if(file_state->curr_rx == NULL) {
+    if(yydata->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
     }
@@ -944,9 +942,9 @@ case 17: {
     n = (int) strtol(yytext+1, NULL, 10);
 
     if(yytext[yylen-2] != ',')
-        file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, n);
+        yydata->curr_rx = mk_num_rx(yydata->curr_rx, n, n);
     else
-        file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, -1);
+        yydata->curr_rx = mk_num_rx(yydata->curr_rx, n, -1);
 
 } break;
 case 18: {
@@ -957,7 +955,7 @@ case 18: {
 #ifdef LEXER_DBG
     vfputs("rep2\n");
 #endif
-    if(file_state->curr_rx == NULL) {
+    if(yydata->curr_rx == NULL) {
         fputs("Tried to apply repetition to empty regex\n", stderr);
         exit(1);
     }
@@ -969,7 +967,7 @@ case 18: {
 
     m = (int) strtol(ptr+1, NULL, 10);
 
-    file_state->curr_rx = mk_num_rx(file_state->curr_rx, n, m);
+    yydata->curr_rx = mk_num_rx(yydata->curr_rx, n, m);
 
 } break;
 case 19: {
@@ -978,30 +976,30 @@ case 19: {
 #ifdef LEXER_DBG
     vfputs("Start action code\n");
 #endif
-    if(file_state->regex_nest_depth > 0) {
+    if(yydata->regex_nest_depth > 0) {
         fputs("Code improperly contained inside parentheses!\n", stderr);
         exit(1);
     }
 
-    if(file_state->curr_rx == NULL && file_state->rx_stack == NULL) {
+    if(yydata->curr_rx == NULL && yydata->rx_stack == NULL) {
         fputs("A code action without a regex!\n", stderr);
         exit(1);
     }
 
-    if(file_state->curr_rx != NULL) {
-        re = file_state->curr_rx;
-        next = file_state->rx_stack;
+    if(yydata->curr_rx != NULL) {
+        re = yydata->curr_rx;
+        next = yydata->rx_stack;
         if(next != NULL)
-            file_state->rx_stack = next->next;
+            yydata->rx_stack = next->next;
     } else {
-        re = file_state->rx_stack;
+        re = yydata->rx_stack;
         if(re->type == R_OPTION)
             add_enc_rx(re, mk_zero_rx());
         next = re->next;
         if(next != NULL)
-            file_state->rx_stack = next->next;
+            yydata->rx_stack = next->next;
         else
-            file_state->rx_stack = NULL;
+            yydata->rx_stack = NULL;
     }
 
     while(next != NULL) {
@@ -1012,25 +1010,25 @@ case 19: {
 
         add_enc_rx(next, re);
         re = next;
-        next = file_state->rx_stack;
+        next = yydata->rx_stack;
         if(next != NULL)
-            file_state->rx_stack = next->next;
+            yydata->rx_stack = next->next;
     }
 
-    file_state->curr_rx = re;
+    yydata->curr_rx = re;
 
-    file_state->dir = D_NONE;
-    file_state->c_nest_depth = 1;
+    yydata->dir = D_NONE;
+    yydata->c_nest_depth = 1;
     YYSTART(C_CODE);
 
 } break;
 case 20: {
 
-    file_state->c_nest_depth = 1;
+    yydata->c_nest_depth = 1;
 
-    if(file_state->code != NULL)
-        free(file_state->code);
-    file_state->code = mk_blank_lstring(0);
+    if(yydata->code != NULL)
+        free(yydata->code);
+    yydata->code = mk_blank_lstring(0);
 
     YYSTART(C_CODE);
 
@@ -1039,10 +1037,10 @@ case 21: {
 
     len_string *x;
 
-    ++file_state->c_nest_depth;
-    x = lstrcat_s(file_state->code, "{");
-    free(file_state->code);
-    file_state->code = x;
+    ++yydata->c_nest_depth;
+    x = lstrcat_s(yydata->code, "{");
+    free(yydata->code);
+    yydata->code = x;
 
 } break;
 case 22: {
@@ -1050,66 +1048,66 @@ case 22: {
     len_string *x;
     pat_entry_t *ent;
 
-    if(--file_state->c_nest_depth == 0) {
-        switch(file_state->dir) {
+    if(--yydata->c_nest_depth == 0) {
+        switch(yydata->dir) {
           case D_NONE:
-            vfprintf(file_state->verb, "Pattern:\n");
-            if(file_state->verb != NULL)
-                print_regex_tree(file_state->verb, file_state->curr_rx);
+            vfprintf(yydata->verb, "Pattern:\n");
+            if(yydata->verb != NULL)
+                print_regex_tree(yydata->verb, yydata->curr_rx);
             vfputs("Code associated with pattern: {\n");
-            if(file_state->verb != NULL)
-                lstr_fwrite(file_state->code, file_state->verb);
+            if(yydata->verb != NULL)
+                lstr_fwrite(yydata->code, yydata->verb);
             vfputs("\n}\n");
 
             ent = malloc_or_die(1, pat_entry_t);
 
-            ent->rx = file_state->curr_rx;
-            ent->code = file_state->code;
-            ent->states = file_state->curr_st;
+            ent->rx = yydata->curr_rx;
+            ent->code = yydata->code;
+            ent->states = yydata->curr_st;
             ent->next = NULL;
 
-            if(file_state->phead == NULL) {
-                file_state->phead = file_state->ptail = ent;
+            if(yydata->phead == NULL) {
+                yydata->phead = yydata->ptail = ent;
             } else {
-                file_state->ptail->next = ent;
-                file_state->ptail = ent;
+                yydata->ptail->next = ent;
+                yydata->ptail = ent;
             }
 
-            ++file_state->npats;
+            ++yydata->npats;
 
-            file_state->curr_rx = NULL;
-            file_state->curr_st = NULL;
+            yydata->curr_rx = NULL;
+            yydata->curr_st = NULL;
 
             break;
 
           case D_HEADER:
             vfputs("Header: {\n");
-            if(file_state->verb != NULL)
-                lstr_fwrite(file_state->code, file_state->verb);
+            if(yydata->verb != NULL)
+                lstr_fwrite(yydata->code, yydata->verb);
             vfputs("\n}\n");
 
-            if(file_state->header != NULL)
-                free(file_state->header);
-            file_state->header = file_state->code;
+            if(yydata->header != NULL)
+                free(yydata->header);
+            yydata->header = yydata->code;
             break;
 
           case D_TOP:
             vfputs("Top: {\n");
-            if(file_state->verb != NULL)
-                lstr_fwrite(file_state->code, file_state->verb);
+            if(yydata->verb != NULL)
+                lstr_fwrite(yydata->code, yydata->verb);
             vfputs("\n}\n");
 
-            if(file_state->top != NULL)
-                free(file_state->top);
-            file_state->top = file_state->code;
+            if(yydata->top != NULL)
+                free(yydata->top);
+            yydata->top = yydata->code;
             break;
 
           case D_USTATE_TYPE:
-            vfprintf(file_state->verb, "User-state: {\n%.*s\n}\n",
-                     (int) file_state->code->len, file_state->code->s);
-            if(file_state->ustate_type != NULL)
-                free(file_state->ustate_type);
-            file_state->ustate_type = file_state->code;
+            vfprintf(yydata->verb, "User-state: {\n%.*s\n}\n",
+                     (int) yydata->code->len, yydata->code->s);
+            if(yydata->ustate_type != NULL)
+                free(yydata->ustate_type);
+            yydata->ustate_type = yydata->code;
             break;
 
           default:
@@ -1118,52 +1116,52 @@ case 22: {
             exit(1);
         }
 
-        file_state->dir = D_NONE;
-        file_state->code = NULL;
+        yydata->dir = D_NONE;
+        yydata->code = NULL;
         YYSTART(MAIN);
     } else {
-        x = lstrcat_s(file_state->code, "}");
-        free(file_state->code);
-        file_state->code = x;
+        x = lstrcat_s(yydata->code, "}");
+        free(yydata->code);
+        yydata->code = x;
     }
 
 } break;
 case 23: {
 
-    len_string *x = lstrcat_buf(file_state->code, yylen, yytext);
-    free(file_state->code);
-    file_state->code = x;
+    len_string *x = lstrcat_buf(yydata->code, yylen, yytext);
+    free(yydata->code);
+    yydata->code = x;
 
 } break;
 case 24: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "Directive \'%s\': %.*s\n",
-             directive_name(file_state->dir), LEN, yytext);
+    vfprintf(yydata->verb, "Directive \'%s\': %.*s\n",
+             directive_name(yydata->dir), LEN, yytext);
 #endif
 
-    switch(file_state->dir) {
+    switch(yydata->dir) {
       case D_STATE:
-        vfprintf(file_state->verb, "%%state directive: %.*s\n", LEN, yytext);
+        vfprintf(yydata->verb, "%%state directive: %.*s\n", LEN, yytext);
 
-        file_state->states = add_to_list(yytext, yylen, file_state->states);
+        yydata->states = add_to_list(yytext, yylen, yydata->states);
 
-        if(file_state->initstate == NULL)
-            file_state->initstate = lstring_dupbuf(yylen, yytext);
+        if(yydata->initstate == NULL)
+            yydata->initstate = lstring_dupbuf(yylen, yytext);
 
         break;
 
       case D_INITSTATE:
-        if(file_state->initstate != NULL)
-            free(file_state->initstate);
-        file_state->initstate = lstring_dupbuf(yylen, yytext);
-        file_state->states = add_to_list(yytext, yylen, file_state->states);
+        if(yydata->initstate != NULL)
+            free(yydata->initstate);
+        yydata->initstate = lstring_dupbuf(yylen, yytext);
+        yydata->states = add_to_list(yytext, yylen, yydata->states);
         break;
 
       case D_PREFIX:
-        if(file_state->prefix != NULL)
-            free(file_state->prefix);
-        file_state->prefix = lstring_dupbuf(yylen, yytext);
+        if(yydata->prefix != NULL)
+            free(yydata->prefix);
+        yydata->prefix = lstring_dupbuf(yylen, yytext);
         break;
 
       default:
@@ -1171,7 +1169,7 @@ case 24: {
         exit(1);
     }
 
-    file_state->dir = D_NONE;
+    yydata->dir = D_NONE;
     YYSTART(NON_WHSP_IS_ERROR);
 
 } break;
@@ -1184,9 +1182,9 @@ case 26: {
 case 27: {
 
 #ifdef LEXER_DBG
-    vfprintf(file_state->verb, "Char \'%c\'\n", yytext[0]);
+    vfprintf(yydata->verb, "Char \'%c\'\n", yytext[0]);
 #endif
-    add_simple_regex(file_state, mk_char_rx(yytext[0]));
+    add_simple_regex(yydata, mk_char_rx(yytext[0]));
     YYSTART(IN_REGEX);
 
 } break;

@@ -72,14 +72,12 @@ typedef struct {
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
 
-extern lexer_lexer_state *file_state;
-
 
 typedef struct yy_Moonlime_state Moonlime_state;
 
 Moonlime_state * MoonlimeInit( void * (*alloc)(size_t),
     void (*unalloc)(void *) );
 void MoonlimeDestroy( Moonlime_state *lexer );
-int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  );
+int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len ,  lexer_lexer_state *  data );
 
 #endif
