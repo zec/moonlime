@@ -4,9 +4,16 @@
 
 %HEADER%
 
-%TOP%
-
 #include <stdlib.h>
+
+typedef struct yy_%PREFIX%_state %PREFIX%_state;
+
+%PREFIX%_state * %PREFIX%Init( void * (*alloc)(size_t),
+    void (*unalloc)(void *) );
+void %PREFIX%Destroy( %PREFIX%_state *lexer );
+int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len %UPARAM% );
+
+%TOP%
 
 typedef struct {
   int done_num;
@@ -32,8 +39,6 @@ typedef struct yy_%PREFIX%_state {
   char *buf;
   char start_buf[64];
 } yyml_state;
-
-typedef struct yy_%PREFIX%_state %PREFIX%_state;
 
 static yyml_fa yy_x[] = {
 %FASTATES%

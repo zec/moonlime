@@ -7,6 +7,8 @@
 
 %HEADER%
 
+#include <stdlib.h>
+
 typedef struct yy_%PREFIX%_state %PREFIX%_state;
 
 %PREFIX%_state * %PREFIX%Init( void * (*alloc)(size_t),
