@@ -189,7 +189,12 @@ otherwise; errors are currently non-recoverable.
 
 EXAMPLES
 --------
-TODO: add examples
+
+The following is a simple integer RPN calculator (with a fixed-size stack):
+
+.....
+include::rpn.l[]
+.....
 
 BUGS
 ----

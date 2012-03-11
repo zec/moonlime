@@ -51,10 +51,10 @@ sample01-hexdump.c sample02-testregexes.c sample03-testNFAregexes.c \
 
 doc: moonlime.html moonlime.1
 
-moonlime.html: moonlime.txt
+moonlime.html: moonlime.txt rpn.l
 	$(ASCIIDOC) -b html -o $@ $<
 
-moonlime.1: moonlime.txt
+moonlime.1: moonlime.txt rpn.l
 	$(A2X) -f manpage $<
 
 clean:

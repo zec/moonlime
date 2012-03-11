@@ -45,6 +45,7 @@ int main()
 [*] { op(*); }
 / { op(/); }
 p { printf("%ld\n", stack[i-1]); }
+pop { if(i > 0) --i; }
 
 // Skip over whitespace
 [ \t\n] { ; }
