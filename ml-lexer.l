@@ -772,7 +772,7 @@ static const char * directive_name(directive_kind dir)
 [ \t\n] { ; }
 
 // Catch-all single-character regexes
-<MAIN,IN_REGEX> [^{\\\])?*+<] {
+<MAIN,IN_REGEX> [^{}\\\[\]()?*+<] {
 #ifdef LEXER_DBG
     vfprintf(yydata->verb, "Char \'%c\'\n", yytext[0]);
 #endif
