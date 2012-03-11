@@ -1,3 +1,6 @@
+/* The default lexical-scanner template for Moonlime. Terms under which the
+ * generated code may be distributed, modified, etc. are provided by the
+ * lexer-writer below. */
 
 
 /* A lexer for template .c and .h files.
@@ -50,7 +53,7 @@ typedef struct {
   int dest_state;
 } yyml_trans;
 
-typedef struct {
+typedef struct yy_Template_state {
   int is_in_error;
   int curr_state; /* state of the DFA */
   int curr_start_state; /* which DFA to use... */
@@ -63,6 +66,8 @@ typedef struct {
   char *buf;
   char start_buf[64];
 } yyml_state;
+
+typedef struct yy_Template_state Template_state;
 
 static yyml_fa yy_x[] = {
 
@@ -214,7 +219,8 @@ static int yy_init_states[] = {
 #define YY_INITSTATE YY_STATE_A
 
 
-void * TemplateInit( void * (*alloc)(size_t), void (*unalloc)(void *) )
+Template_state * TemplateInit( void * (*alloc)(size_t),
+    void (*unalloc)(void *) )
 {
     yyml_state *ms;
 
@@ -242,7 +248,7 @@ void * TemplateInit( void * (*alloc)(size_t), void (*unalloc)(void *) )
     return ms;
 }
 
-void TemplateDestroy( void *lexer )
+void TemplateDestroy( Template_state *lexer )
 {
     yyml_state *ms = lexer;
 
@@ -313,7 +319,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int TemplateRead( void *lexer, char *input, size_t len )
+int TemplateRead( Template_state *lexer, char *input, size_t len )
 {
     int done_relexing, i;
     char *end = input + len;

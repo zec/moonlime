@@ -1,6 +1,10 @@
 #ifndef YYML_Moonlime_HEADER
 #define YYML_Moonlime_HEADER
 
+/* The default lexical-scanner template for Moonlime. Terms under which the
+ * generated code may be distributed, modified, etc. are provided by the
+ * lexer-writer below. */
+
 
 /* A lexer for Moonlime lexers.
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms. */
@@ -69,9 +73,11 @@ void init_lexer_lexer_state(lexer_lexer_state *st);
 extern lexer_lexer_state *file_state;
 
 
+typedef struct yy_Moonlime_state Moonlime_state;
 
-void * MoonlimeInit( void * (*alloc)(size_t), void (*unalloc)(void *) );
-void MoonlimeDestroy( void *lexer );
-int MoonlimeRead( void *lexer, char *input, size_t len );
+Moonlime_state * MoonlimeInit( void * (*alloc)(size_t),
+    void (*unalloc)(void *) );
+void MoonlimeDestroy( Moonlime_state *lexer );
+int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len );
 
 #endif

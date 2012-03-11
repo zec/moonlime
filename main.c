@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 {
     lexer_lexer_state s;
     FILE *f;
-    void *lexer;
+    Moonlime_state *lexer;
     char buf[256];
     size_t num_in = 1;
     const char *lexer_name = NULL;
@@ -290,7 +290,7 @@ static void run_tmpl(tmpl_state *t, const char *tmpl_name)
 {
     FILE *f;
     char buf[1];
-    void *lexer;
+    Template_state *lexer;
     size_t num_in = 1;
     int num_tot = 0;
 

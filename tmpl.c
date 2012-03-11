@@ -19,7 +19,7 @@ typedef struct {
   int dest_state;
 } yyml_trans;
 
-typedef struct {
+typedef struct yy_%PREFIX%_state {
   int is_in_error;
   int curr_state; /* state of the DFA */
   int curr_start_state; /* which DFA to use... */
@@ -32,6 +32,8 @@ typedef struct {
   char *buf;
   char start_buf[64];
 } yyml_state;
+
+typedef struct yy_%PREFIX%_state %PREFIX%_state;
 
 static yyml_fa yy_x[] = {
 %FASTATES%
@@ -47,7 +49,8 @@ static int yy_init_states[] = {
 
 %START_STATE_DEFS%
 
-void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
+%PREFIX%_state * %PREFIX%Init( void * (*alloc)(size_t),
+    void (*unalloc)(void *) )
 {
     yyml_state *ms;
 
@@ -75,7 +78,7 @@ void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) )
     return ms;
 }
 
-void %PREFIX%Destroy( void *lexer )
+void %PREFIX%Destroy( %PREFIX%_state *lexer )
 {
     yyml_state *ms = lexer;
 
@@ -146,7 +149,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int %PREFIX%Read( void *lexer, char *input, size_t len )
+int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
 {
     int done_relexing, i;
     char *end = input + len;

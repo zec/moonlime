@@ -7,8 +7,11 @@
 
 %HEADER%
 
-void * %PREFIX%Init( void * (*alloc)(size_t), void (*unalloc)(void *) );
-void %PREFIX%Destroy( void *lexer );
-int %PREFIX%Read( void *lexer, char *input, size_t len );
+typedef struct yy_%PREFIX%_state %PREFIX%_state;
+
+%PREFIX%_state * %PREFIX%Init( void * (*alloc)(size_t),
+    void (*unalloc)(void *) );
+void %PREFIX%Destroy( %PREFIX%_state *lexer );
+int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len );
 
 #endif

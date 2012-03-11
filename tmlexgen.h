@@ -1,6 +1,10 @@
 #ifndef YYML_Template_HEADER
 #define YYML_Template_HEADER
 
+/* The default lexical-scanner template for Moonlime. Terms under which the
+ * generated code may be distributed, modified, etc. are provided by the
+ * lexer-writer below. */
+
 
 /* A lexer for template .c and .h files.
  * Copyright © 2012 Zachary Catlin. See LICENSE for terms. */
@@ -35,9 +39,11 @@ typedef struct {
 extern tmpl_state *tstate;
 
 
+typedef struct yy_Template_state Template_state;
 
-void * TemplateInit( void * (*alloc)(size_t), void (*unalloc)(void *) );
-void TemplateDestroy( void *lexer );
-int TemplateRead( void *lexer, char *input, size_t len );
+Template_state * TemplateInit( void * (*alloc)(size_t),
+    void (*unalloc)(void *) );
+void TemplateDestroy( Template_state *lexer );
+int TemplateRead( Template_state *lexer, char *input, size_t len );
 
 #endif
