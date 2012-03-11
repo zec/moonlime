@@ -1,4 +1,6 @@
-A lexer-generator, inspired by Lex and Lemon, written in Lua.
+A lexer-generator, inspired by Lex and Lemon, originally written in Lua and
+since rewritten and bootstrapped into pure C. See moonlime.txt for the manpage
+and INSTALL for information on installation.
 
 Unless otherwise specified in the file, all files are licensed under the terms
 of an MIT-type licence, whose text can be found in the file LICENSE.
