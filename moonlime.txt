@@ -11,11 +11,23 @@ moonlime - yet another lexical analyzer generator
 
 SYNOPSIS
 --------
-*moonlime* 'file' [*-v*] [*-o* 'c-file'] [*-i* ['header-file']]
+*moonlime* 'lfile' [*-v*] [*-o* 'c-file'] [*-i* ['header-file']]
 
 DESCRIPTION
 -----------
-blah
+'Moonlime' takes a lexical analyzer (lexer) specification 'lfile' and creates
+a C file that implements a pattern-matching lexical analyzer, much like
+'lex'(1), the classic Unix lexer-generator. The generated lexer is unlike
+the output of traditional 'lex' in two ways:
+
+* The lexer is operated in a `push' mode rather than a `pull' mode: instead of
+  a higher-level parser calling the lexer for each token, the lexer is called
+  to process incoming input data, and the parser is called by the code
+  associated with a pattern.
+* The lexer uses no global state. Multiple instances of the same lexer may be
+  run at the same time, and they will not interfere with each other's
+  operation. In addition, different lexers may be used by the same program
+  provided each is given a different *%prefix* (see *Directives* for details).
 
 OPTIONS
 -------
@@ -31,7 +43,166 @@ OPTIONS
 
 *-v*::
   Output verbose information about the lexer-generation to standard error.
-  Probably only useful for debugging *moonlime* itself.
+  This is probably only useful for debugging 'moonlime' itself.
+
+LANGUAGE
+--------
+The input file language takes its inspiration from 'lex'(1) and 'lemon'(1),
+the LALR(1) parser-generator used by SQLite. An input file consists of a
+number of 'token rules', specifications of regular-expression patterns matched
+by the generated lexer and the code to be run upon finding said pattern, and
+'directives', non-pattern information to control some aspect of the generated
+code. C-style (**/* **...** */**) and C++-style (**//** ...) comments may be
+included in the input file; they will be ignored.
+
+A token rule consists of an optional list of start states
+**<**__STATE1__**,**__STATE2__**,**...**,**__STATEn__**>** (in which case the
+rule will only match
+incoming text when one of the given start states is active), followed by a
+series of regular-expression fragments and ending with C code enclosed in
+braces **{** ... **}**. At any given point in the input, the generated lexer will use
+the active pattern with the longest match at the current point and execute the
+associated C code; if two or more patterns have equal-length longest matches,
+the first one declared will be used.
+
+Regular Expressions
+~~~~~~~~~~~~~~~~~~~
+The following regular expression syntax is recognized:
+
+'c':: Match the literal character 'c', where 'c' is not a special character
+      ('<>(){}\\[]?*+')
+
+*\n* *\t* **\x**__hh__:: Match a newline, tab, or the hexadecimal byte value 'hh',
+                  respectively
+
+'c' :: Match the literal character 'c', where 'c' is not n, t, or x
+
+*.*:: Match any single character
+
+**[**__...__**]**:: Match any of the characters in the enclosed set. If the first
+    character is **^**, match any of the characters 'not' in the enclosed
+    set instead. Backslash-escapes are recognized, but character ranges
+    (e.g. 'a-z') currently are not.
+
+**(**__re__**)**:: Group the enclosed regular expression 're'; useful for repetition
+          operators.
+
+__a__**|**__b__:: Match either regular expression 'a' or regular expression 'b'.
+
+__a__**?**:: Match regular expression 'a' zero or one times.
+
+__a__*****:: Match regular expression 'a' zero or more times.
+
+__a__**+**:: Match regular expression 'a' one or more times.
+
+__a__**{**__n__**}**:: Match regular expression 'a' exactly 'n' times.
+               *NOTE*: Be sure not to include any whitespace between the braces
+               in this and the following expressions - otherwise it will be
+               interpreted as C code!
+
+__a__**{**__n__**,**__m__**}**:: Match regular expression 'a' between 'n' and 'm' times;
+                     'n' or 'm' may be blank, in which case there is no lower
+                     or upper bound on the number of times 'a' is matched,
+                     respectively.
+
+Whitespace may separate regular-expression fragments, the start-state list and
+the regular expression, and the regular expression and the C code associated
+with the regular expression.
+
+C code
+~~~~~~
+The C code associated with a pattern has access to the following variables
+and macros:
+
+*yytext*:: A 'const char *' pointing to the start of the matched text. Note that
+         the code shouldn't modify the contents of 'yytext'; also, 'yytext' is
+         not null-terminated.
+
+*yylen*:: A 'size_t' giving the length of the matched text in 'yytext'.
+
+*yydata*:: If a *%userdata* directive is given (see below), this will be available;
+         it will be of type 'c-type' and will be whatever is passed in as the
+         fourth argument to the generated __prefix__Read function.
+
+**YYSTART(**__state__**)**:: Changes the active start state to 'state'.
+
+The C code should not declare or define anything beginning with 'yy' or 'YY'.
+
+Directives
+~~~~~~~~~~
+The following directives modify the generated lexer:
+
+*%header* { 'c-code' }:: Puts 'c-code' into the generated header file (if any)
+                       and into the top of the generated C file.
+
+*%top* { 'c-code' }:: Puts 'c-code' into the top of the generated C file only.
+
+*%prefix* 'prefix':: Specifies a prefix to be used for public functions and
+                   structures in the generated code. If there is no *%prefix*
+                   directive in the file, 'prefix' will be the default value
+                   'Lexer'.
+
+*%userdata* { 'c-type' }:: If this directive is included in the file, the
+                         __prefix__Read function (see *GENERATED CODE USAGE*
+                         below) will include an extra argument at the end with
+                         type 'c-type'; this argument will be available to
+                         the C code of the patterns as the variable *yydata*.
+
+*%state* 'state':: Define a new start state. Start states allow the generated
+                 C code to modify what patterns (and associated C code actions)
+                 are active at a given time. If a start state 'STATE' is
+                 active, only patterns with 'STATE' in their start-state list
+                 and patterns with no start-state list will be matched.
+                 Start states are an optional feature; if none are declared,
+                 all patterns will be active at any given time.
+
+*%initstate* 'state':: The start state that is active at the beginning of lexing.
+                     If no *%initstate* directive is given, the state declared
+                     by the first *%state* directive will be the initial state.
+
+GENERATED CODE USAGE
+--------------------
+The following public declarations are created (for the default 'prefix' of
+Lexer):
+
+-----
+Lexer_state *LexerInit(void *(*alloc)(size_t),
+                       void (*unalloc)(void *));
+
+void LexerDestroy(Lexer_state *lexer);
+
+int LexerRead(Lexer_state *lexer, char *input,
+              size_t len [, c-type data]);
+-----
+
+`LexerInit` allocates and sets up an instance of the lexer state (an opaque structure of type `Lexer_state`), then returns
+the new state; `alloc` and `unalloc` are used to allocate and free memory.
+
+`LexerDestroy` unallocates all memory used by 'lexer'.
+
+`LexerRead` runs the 'len' bytes starting at 'input' through the lexer instance
+'lexer'; if a *%userdata* directive is specified, a fourth argument 'data' will
+be passed on to the C code associated to the patterns that are matched. When
+end-of-input is reached, `LexerRead` should be called one last time with a
+'len' of 0. `LexerRead` returns zero when an error occurs during lexing, non-zero
+otherwise; errors are currently non-recoverable.
+
+EXAMPLES
+--------
+TODO: add examples
+
+BUGS
+----
+The generated state and transition information is larger than it could be;
+no optimization is currently done.
+
+It would probably be a good thing to give the C code actions a *YYERROR()* macro,
+as well as position information (current byte of file, current line/char).
+
+More verbose error information should be given, and error recovery by user
+code might be good.
+
+This may not be a big enough asteroid to kill 'lex'(1).
 
 AUTHOR
 ------
