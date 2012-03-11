@@ -102,8 +102,6 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->ustate_type = NULL;
 }
 
-lexer_lexer_state *file_state;
-
 static void add_simple_regex_impl(lexer_lexer_state *st, regex_t *rx,
                                   const char *fname, int line)
 {
