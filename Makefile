@@ -1,4 +1,5 @@
 PROG=moonlime
+LPROG=$(PROG)-loc
 OBJS=mllexgen.o utils.o regex.o fa.o tmlexgen.o
 
 SAMPLES=sample01-hexdump sample02-testregexes sample03-testNFAregexes
@@ -20,7 +21,7 @@ DOCDIR=$(PREFIX)/share/doc/moonlime
 MANDIR=$(PREFIX)/share/man/man1
 
 
-local: $(PROG)-loc
+local: $(LPROG)
 
 all: $(PROG)
 
@@ -28,7 +29,7 @@ all: $(PROG)
 
 .PRECIOUS: %.c
 
-$(PROG)-loc: main-loc.o $(OBJS)
+$(LPROG): main-loc.o $(OBJS)
 	$(CC) -o $@ main-loc.o $(OBJS)
 
 $(PROG): main.o $(OBJS)
@@ -49,11 +50,11 @@ utils.o: utils.h
 
 bootstrap-prep: ml-lexer.c tmpl-lex.c
 
-ml-lexer.c: ml-lexer.l $(PROG) tmpl.c tmpl.h
-	./$(PROG) $< -o $@ -i
+ml-lexer.c: ml-lexer.l $(LPROG) tmpl.c tmpl.h
+	./$(LPROG) $< -o $@ -i
 
-tmpl-lex.c: tmpl-lex.l $(PROG) tmpl.c tmpl.h
-	./$(PROG) $< -o $@ -i
+tmpl-lex.c: tmpl-lex.l $(LPROG) tmpl.c tmpl.h
+	./$(LPROG) $< -o $@ -i
 
 samples: $(SAMPLES) rpn
 
@@ -64,8 +65,8 @@ rpn: rpn.o
 	$(CC) -o $@ $<
 
 sample01-hexdump.c sample02-testregexes.c sample03-testNFAregexes.c \
-  sample04-teststates.c rpn.c: %.c: %.l $(PROG) tmpl.c
-	./$(PROG) $< -o $@
+  sample04-teststates.c rpn.c: %.c: %.l $(LPROG) tmpl.c
+	./$(LPROG) $< -o $@
 
 doc: moonlime.html moonlime.1
 
@@ -88,4 +89,4 @@ install-all: install doc
 
 clean:
 	rm -f $(PROG) $(SAMPLES) sample[0-9]*.c *-lex*.[ch] *.o *.html *.1
-	rm -f rpn rpn.c
+	rm -f $(LPROG) rpn rpn.c
