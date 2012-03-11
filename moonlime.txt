@@ -3,7 +3,7 @@ moonlime(1)
 :man manual: Moonlime
 :man source: Moonlime
 :man version: pre-0.1
-:docdate: 2012-03-10
+:revdate: {a2x-format@manpage:2012-03-10}
 
 NAME
 ----
@@ -15,18 +15,23 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-*-o* 'c-file'::
-  Opu
-
-*-i* ['header-file']::
-  Header
-
-*-v*::
-  Verbose
+blah
 
 OPTIONS
 -------
-hey
+*-o* 'c-file'::
+  The output file for the generated lexer. If no *-o* option is given, the
+  lexer will be written to the default file `yylex.c`.
+
+*-i* ['header-file']::
+  Write a header file for the generated lexer to 'header-file'. As a special
+  case, if *-i* is the last command-line argument and no 'header-file' is
+  specified, 'header-file' will be set to the name of 'c-file' with .c replaced
+  by .h, or the special filename `yylex.h` if 'c-file' does not end with .c.
+
+*-v*::
+  Output verbose information about the lexer-generation to standard error.
+  Probably only useful for debugging *moonlime* itself.
 
 AUTHOR
 ------
