@@ -8,9 +8,12 @@ SAMPLES+= sample04-teststates
 CC=gcc
 CFLAGS=-Wall -Werror
 
+ASCIIDOC=asciidoc
+A2X=a2x
+
 all: $(PROG)
 
-.PHONY: all bootstrap-prep samples clean
+.PHONY: all bootstrap-prep samples doc clean
 
 .PRECIOUS: %.c
 
@@ -44,5 +47,13 @@ sample01-hexdump.c sample02-testregexes.c sample03-testNFAregexes.c \
   sample04-teststates.c: %.c: %.l $(PROG) tmpl.c
 	./$(PROG) $< -o $@
 
+doc: moonlime.html moonlime.1
+
+moonlime.html: moonlime.txt
+	$(ASCIIDOC) -b html -o $@ $<
+
+moonlime.1: moonlime.txt
+	$(A2X) -f manpage $<
+
 clean:
-	rm -f $(PROG) $(SAMPLES) sample[0-9]*.c *-lex*.[ch] *.o
+	rm -f $(PROG) $(SAMPLES) sample[0-9]*.c *-lex*.[ch] *.o *.html *.1

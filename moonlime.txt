@@ -1,0 +1,33 @@
+moonlime(1)
+===========
+:man manual: Moonlime
+:man source: Moonlime
+:man version: pre-0.1
+:docdate: 2012-03-10
+
+NAME
+----
+moonlime - yet another lexical analyzer generator
+
+SYNOPSIS
+--------
+*moonlime* 'file' [*-v*] [*-o* 'c-file'] [*-i* ['header-file']]
+
+DESCRIPTION
+-----------
+*-o* 'c-file'::
+  Opu
+
+*-i* ['header-file']::
+  Header
+
+*-v*::
+  Verbose
+
+OPTIONS
+-------
+hey
+
+AUTHOR
+------
+Written by Zachary Catlin <z&#64;zc.is>.

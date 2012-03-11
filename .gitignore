@@ -5,6 +5,10 @@
 /sample[0-9]*
 !/sample[0-9]*.l
 
+/moonlime.html
+/moonlime.xml
+/moonlime.1
+
 # Editor temporary files
 *~*
 *.swp
