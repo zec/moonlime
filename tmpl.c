@@ -93,7 +93,7 @@ void %PREFIX%Destroy( %PREFIX%_state *lexer )
 }
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state);
+                              int *yy_start_state %YYUPARAM%);
 
 static int yyrun_char(yyml_state *ms, char c, int add_to_buf, int len)
 {
@@ -149,7 +149,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
+int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len %UPARAM% )
 {
     int done_relexing, i;
     char *end = input + len;
@@ -168,7 +168,7 @@ int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
         }
 
         yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                          &(ms->curr_start_state));
+                          &(ms->curr_start_state) %UDATA%);
         yyreset_state(ms);
 
         while(ms->string_len > 0) {
@@ -182,7 +182,7 @@ int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
 
                     yymoonlime_action(ms->last_done_num, ms->buf,
                                       ms->last_done_len,
-                                      &(ms->curr_start_state));
+                                      &(ms->curr_start_state) %UDATA%);
                     yyreset_state(ms);
                     break;
                 }
@@ -201,7 +201,7 @@ int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
                 return 0;
             }
             yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                              &(ms->curr_start_state));
+                              &(ms->curr_start_state) %UDATA%);
             yyreset_state(ms);
 
             /* Re-lex remaining part of the buffer */
@@ -217,7 +217,7 @@ int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
 
                         yymoonlime_action(ms->last_done_num, ms->buf,
                                           ms->last_done_len,
-                                          &(ms->curr_start_state));
+                                          &(ms->curr_start_state) %UDATA%);
                         yyreset_state(ms);
                         i = 0;
                         continue;
@@ -238,7 +238,7 @@ int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len )
 #define YYSTART(x) do { *yy_start_state = YY_STATE_ ## x ; } while(0)
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state)
+                              int *yy_start_state %YYUPARAM%)
 {
     switch(done_num) {
 %ACTIONS%

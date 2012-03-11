@@ -44,6 +44,6 @@ typedef struct yy_Template_state Template_state;
 Template_state * TemplateInit( void * (*alloc)(size_t),
     void (*unalloc)(void *) );
 void TemplateDestroy( Template_state *lexer );
-int TemplateRead( Template_state *lexer, char *input, size_t len );
+int TemplateRead( Template_state *lexer, char *input, size_t len  );
 
 #endif

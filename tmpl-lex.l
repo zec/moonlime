@@ -135,6 +135,23 @@ tmpl_state *tstate = NULL;
     }
 }
 
+[%]UPARAM[%] {
+    len_string *p = tstate->st->ustate_type;
+    if(p != NULL)
+        fprintf(tstate->f, ", %.*s data", (int) p->len, p->s);
+}
+
+[%]UDATA[%] {
+    if(tstate->st->ustate_type != NULL)
+        fputs(", data", tstate->f);
+}
+
+[%]YYUPARAM[%] {
+    len_string *p = tstate->st->ustate_type;
+    if(p != NULL)
+        fprintf(tstate->f, ", %.*s yydata", (int) p->len, p->s);
+}
+
 .|\n {
     fputc(yytext[0], tstate->f);
 }

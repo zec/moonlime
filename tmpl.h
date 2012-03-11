@@ -12,6 +12,6 @@ typedef struct yy_%PREFIX%_state %PREFIX%_state;
 %PREFIX%_state * %PREFIX%Init( void * (*alloc)(size_t),
     void (*unalloc)(void *) );
 void %PREFIX%Destroy( %PREFIX%_state *lexer );
-int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len );
+int %PREFIX%Read( %PREFIX%_state *lexer, char *input, size_t len %UPARAM% );
 
 #endif

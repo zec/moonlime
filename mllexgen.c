@@ -22,7 +22,8 @@ typedef enum {
     D_HEADER,
     D_STATE,
     D_INITSTATE,
-    D_PREFIX
+    D_PREFIX,
+    D_USTATE_TYPE
 } directive_kind;
 
 struct pattern_entry {
@@ -63,6 +64,7 @@ typedef struct {
     len_string *prefix; /* A prefix to use for names in the generated lexer. */
 
     FILE *verb; /* An optional file to print verbose information */
+    len_string *ustate_type; /* The type of the (optional) user state object */
 } lexer_lexer_state;
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
@@ -99,6 +101,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->regex_nest_depth = st->c_nest_depth = 0;
     st->npats = 0;
     st->verb = NULL;
+    st->ustate_type = NULL;
 }
 
 lexer_lexer_state *file_state;
@@ -217,6 +220,8 @@ static const char * directive_name(directive_kind dir)
         return "%initstate";
       case D_PREFIX:
         return "%prefix";
+      case D_USTATE_TYPE:
+        return "%userdata";
     }
 
     return NULL;
@@ -496,7 +501,7 @@ void MoonlimeDestroy( Moonlime_state *lexer )
 }
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state);
+                              int *yy_start_state );
 
 static int yyrun_char(yyml_state *ms, char c, int add_to_buf, int len)
 {
@@ -552,7 +557,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
+int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  )
 {
     int done_relexing, i;
     char *end = input + len;
@@ -571,7 +576,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
         }
 
         yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                          &(ms->curr_start_state));
+                          &(ms->curr_start_state) );
         yyreset_state(ms);
 
         while(ms->string_len > 0) {
@@ -585,7 +590,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
 
                     yymoonlime_action(ms->last_done_num, ms->buf,
                                       ms->last_done_len,
-                                      &(ms->curr_start_state));
+                                      &(ms->curr_start_state) );
                     yyreset_state(ms);
                     break;
                 }
@@ -604,7 +609,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
                 return 0;
             }
             yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                              &(ms->curr_start_state));
+                              &(ms->curr_start_state) );
             yyreset_state(ms);
 
             /* Re-lex remaining part of the buffer */
@@ -620,7 +625,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
 
                         yymoonlime_action(ms->last_done_num, ms->buf,
                                           ms->last_done_len,
-                                          &(ms->curr_start_state));
+                                          &(ms->curr_start_state) );
                         yyreset_state(ms);
                         i = 0;
                         continue;
@@ -641,7 +646,7 @@ int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len )
 #define YYSTART(x) do { *yy_start_state = YY_STATE_ ## x ; } while(0)
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state)
+                              int *yy_start_state )
 {
     switch(done_num) {
 case 1: {
@@ -669,8 +674,12 @@ case 2: {
         file_state->dir = D_PREFIX;
         YYSTART(PRE_C_TOKEN);
 
+    } else if(yylen == 9 && !strncmp(yytext, "%userdata", yylen)) {
+        file_state->dir = D_USTATE_TYPE;
+        YYSTART(PRE_C_CODE);
+
     } else {
-        fprintf(stderr, "Unknown directive!\n");
+        fprintf(stderr, "Unknown directive %.*s!\n", (int) yylen, yytext);
         exit(1);
     }
 
@@ -1093,6 +1102,14 @@ case 22: {
             if(file_state->top != NULL)
                 free(file_state->top);
             file_state->top = file_state->code;
+            break;
+
+          case D_USTATE_TYPE:
+            vfprintf(file_state->verb, "User-state: {\n%.*s\n}\n",
+                     (int) file_state->code->len, file_state->code->s);
+            if(file_state->ustate_type != NULL)
+                free(file_state->ustate_type);
+            file_state->ustate_type = file_state->code;
             break;
 
           default:

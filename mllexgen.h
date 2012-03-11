@@ -25,7 +25,8 @@ typedef enum {
     D_HEADER,
     D_STATE,
     D_INITSTATE,
-    D_PREFIX
+    D_PREFIX,
+    D_USTATE_TYPE
 } directive_kind;
 
 struct pattern_entry {
@@ -66,6 +67,7 @@ typedef struct {
     len_string *prefix; /* A prefix to use for names in the generated lexer. */
 
     FILE *verb; /* An optional file to print verbose information */
+    len_string *ustate_type; /* The type of the (optional) user state object */
 } lexer_lexer_state;
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
@@ -78,6 +80,6 @@ typedef struct yy_Moonlime_state Moonlime_state;
 Moonlime_state * MoonlimeInit( void * (*alloc)(size_t),
     void (*unalloc)(void *) );
 void MoonlimeDestroy( Moonlime_state *lexer );
-int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len );
+int MoonlimeRead( Moonlime_state *lexer, char *input, size_t len  );
 
 #endif

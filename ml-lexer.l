@@ -26,7 +26,8 @@ typedef enum {
     D_HEADER,
     D_STATE,
     D_INITSTATE,
-    D_PREFIX
+    D_PREFIX,
+    D_USTATE_TYPE
 } directive_kind;
 
 struct pattern_entry {
@@ -67,6 +68,7 @@ typedef struct {
     len_string *prefix; /* A prefix to use for names in the generated lexer. */
 
     FILE *verb; /* An optional file to print verbose information */
+    len_string *ustate_type; /* The type of the (optional) user state object */
 } lexer_lexer_state;
 
 void init_lexer_lexer_state(lexer_lexer_state *st);
@@ -103,6 +105,7 @@ void init_lexer_lexer_state(lexer_lexer_state *st)
     st->regex_nest_depth = st->c_nest_depth = 0;
     st->npats = 0;
     st->verb = NULL;
+    st->ustate_type = NULL;
 }
 
 lexer_lexer_state *file_state;
@@ -221,6 +224,8 @@ static const char * directive_name(directive_kind dir)
         return "%initstate";
       case D_PREFIX:
         return "%prefix";
+      case D_USTATE_TYPE:
+        return "%userdata";
     }
 
     return NULL;
@@ -268,8 +273,12 @@ static const char * directive_name(directive_kind dir)
         file_state->dir = D_PREFIX;
         YYSTART(PRE_C_TOKEN);
 
+    } else if(yylen == 9 && !strncmp(yytext, "%userdata", yylen)) {
+        file_state->dir = D_USTATE_TYPE;
+        YYSTART(PRE_C_CODE);
+
     } else {
-        fprintf(stderr, "Unknown directive!\n");
+        fprintf(stderr, "Unknown directive %.*s!\n", (int) yylen, yytext);
         exit(1);
     }
 }
@@ -683,6 +692,14 @@ static const char * directive_name(directive_kind dir)
             if(file_state->top != NULL)
                 free(file_state->top);
             file_state->top = file_state->code;
+            break;
+
+          case D_USTATE_TYPE:
+            vfprintf(file_state->verb, "User-state: {\n%.*s\n}\n",
+                     (int) file_state->code->len, file_state->code->s);
+            if(file_state->ustate_type != NULL)
+                free(file_state->ustate_type);
+            file_state->ustate_type = file_state->code;
             break;
 
           default:
