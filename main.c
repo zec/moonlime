@@ -173,7 +173,6 @@ int main(int argc, char **argv)
     rxl = mk_regex_list(&s);
     stsl = mk_start_state_list(&s);
     nfa = multi_regex_compile(rxl);
-    tstate = &tms;
 
     if(verbose) {
         fputs("--- total NFA:\n", stderr);
@@ -307,7 +306,7 @@ static void run_tmpl(tmpl_state *t, const char *tmpl_name)
         num_in = fread(buf, 1, sizeof(buf), f);
 
         if(num_in != 0) {
-            if(!TemplateRead(lexer, buf, num_in)) {
+            if(!TemplateRead(lexer, buf, num_in, t)) {
                 fprintf(stderr, "Error lexing %s (%d-%d)\n", tmpl_name,
                         num_tot, num_tot + (int) num_in);
                 TemplateDestroy(lexer);
@@ -323,7 +322,7 @@ static void run_tmpl(tmpl_state *t, const char *tmpl_name)
         }
     }
 
-    if(!TemplateRead(lexer, NULL, 0)) {
+    if(!TemplateRead(lexer, NULL, 0, t)) {
         fprintf(stderr, "Error near the end of %s\n", tmpl_name);
         exit(1);
     }

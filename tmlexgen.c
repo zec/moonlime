@@ -33,11 +33,7 @@ typedef struct {
     fa_list_t *start_states;
 } tmpl_state;
 
-extern tmpl_state *tstate;
 
-
-
-tmpl_state *tstate = NULL;
 
 
 #include <stdlib.h>
@@ -305,7 +301,7 @@ void TemplateDestroy( Template_state *lexer )
 }
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state );
+                              int *yy_start_state ,  tmpl_state *  yydata);
 
 static int yyrun_char(yyml_state *ms, char c, int add_to_buf, int len)
 {
@@ -361,7 +357,7 @@ static void yyreset_state(yyml_state *ms)
     ms->curr_state = yy_init_states[ms->curr_start_state];
 }
 
-int TemplateRead( Template_state *lexer, char *input, size_t len  )
+int TemplateRead( Template_state *lexer, char *input, size_t len ,  tmpl_state *  data )
 {
     int done_relexing, i;
     char *end = input + len;
@@ -380,7 +376,7 @@ int TemplateRead( Template_state *lexer, char *input, size_t len  )
         }
 
         yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                          &(ms->curr_start_state) );
+                          &(ms->curr_start_state) , data);
         yyreset_state(ms);
 
         while(ms->string_len > 0) {
@@ -394,7 +390,7 @@ int TemplateRead( Template_state *lexer, char *input, size_t len  )
 
                     yymoonlime_action(ms->last_done_num, ms->buf,
                                       ms->last_done_len,
-                                      &(ms->curr_start_state) );
+                                      &(ms->curr_start_state) , data);
                     yyreset_state(ms);
                     break;
                 }
@@ -413,7 +409,7 @@ int TemplateRead( Template_state *lexer, char *input, size_t len  )
                 return 0;
             }
             yymoonlime_action(ms->last_done_num, ms->buf, ms->last_done_len,
-                              &(ms->curr_start_state) );
+                              &(ms->curr_start_state) , data);
             yyreset_state(ms);
 
             /* Re-lex remaining part of the buffer */
@@ -429,7 +425,7 @@ int TemplateRead( Template_state *lexer, char *input, size_t len  )
 
                         yymoonlime_action(ms->last_done_num, ms->buf,
                                           ms->last_done_len,
-                                          &(ms->curr_start_state) );
+                                          &(ms->curr_start_state) , data);
                         yyreset_state(ms);
                         i = 0;
                         continue;
@@ -450,30 +446,30 @@ int TemplateRead( Template_state *lexer, char *input, size_t len  )
 #define YYSTART(x) do { *yy_start_state = YY_STATE_ ## x ; } while(0)
 
 static void yymoonlime_action(int done_num, const char *yytext, size_t yylen,
-                              int *yy_start_state )
+                              int *yy_start_state ,  tmpl_state *  yydata)
 {
     switch(done_num) {
 case 1: {
 
-    if(tstate->st->header != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->header->len,
-                tstate->st->header->s);
+    if(yydata->st->header != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->header->len,
+                yydata->st->header->s);
 
 } break;
 case 2: {
 
-    if(tstate->st->top != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->top->len,
-                tstate->st->top->s);
+    if(yydata->st->top != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->top->len,
+                yydata->st->top->s);
 
 } break;
 case 3: {
 
-    if(tstate->st->prefix != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->prefix->len,
-                tstate->st->prefix->s);
+    if(yydata->st->prefix != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->prefix->len,
+                yydata->st->prefix->s);
     else
-        fputs("Lexer", tstate->f);
+        fputs("Lexer", yydata->f);
 
 } break;
 case 4: {
@@ -483,15 +479,15 @@ case 4: {
     int i = 0;
     int is_first = 1;
 
-    for(s = tstate->dfa->first; s != NULL; s = s->next) {
-        fprintf(tstate->f, "%s\n {%d, %d, ", is_first ? "" : ",",
+    for(s = yydata->dfa->first; s != NULL; s = s->next) {
+        fprintf(yydata->f, "%s\n {%d, %d, ", is_first ? "" : ",",
                 s->done_num, i);
         is_first = 0;
         for(t = s->trans; t != NULL; t = t->next)
             ++i;
-        fprintf(tstate->f, "%d}", i);
+        fprintf(yydata->f, "%d}", i);
     }
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 
 } break;
 case 5: {
@@ -500,9 +496,9 @@ case 5: {
     trans_t *t;
     int is_first = 1, i, j, val;
 
-    for(s = tstate->dfa->first; s != NULL; s = s->next) {
+    for(s = yydata->dfa->first; s != NULL; s = s->next) {
         for(t = s->trans; t != NULL; t = t->next) {
-            fprintf(tstate->f, "%s\n { {", is_first ? "" : ",");
+            fprintf(yydata->f, "%s\n { {", is_first ? "" : ",");
             is_first = 0;
             for(i = 0; i < 256; i += 8) {
                 val = 0;
@@ -511,24 +507,24 @@ case 5: {
                        (1 << ((i+j)%ML_UINT_BIT)))
                     val |= 1 << j;
                 }
-                fprintf(tstate->f, "%d%s", val, (i < 248) ? "," : "");
+                fprintf(yydata->f, "%d%s", val, (i < 248) ? "," : "");
             }
-            fprintf(tstate->f, "}, %d }", t->dest->id);
+            fprintf(yydata->f, "}, %d }", t->dest->id);
         }
     }
 
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 
 } break;
 case 6: {
 
     fa_list_t *l;
 
-    for(l = tstate->start_states; l != NULL; l = l->next)
-        fprintf(tstate->f, "%s\n %d", (l == tstate->start_states) ? "" : ",",
+    for(l = yydata->start_states; l != NULL; l = l->next)
+        fprintf(yydata->f, "%s\n %d", (l == yydata->start_states) ? "" : ",",
                 l->state->id);
 
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 
 } break;
 case 7: {
@@ -536,14 +532,14 @@ case 7: {
     fa_list_t *l;
     int i = 0;
 
-    for(l = tstate->start_states; l != NULL; l = l->next)
-        fprintf(tstate->f, "#define YY_STATE_%.*s %d\n",
+    for(l = yydata->start_states; l != NULL; l = l->next)
+        fprintf(yydata->f, "#define YY_STATE_%.*s %d\n",
                 (int) ((len_string *) l->data1)->len,
                 ((len_string *) l->data1)->s, i++);
 
-    fprintf(tstate->f, "#define YY_MAXSTATE %d\n", i-1);
-    fprintf(tstate->f, "#define YY_INITSTATE YY_STATE_%.*s\n",
-            (int) tstate->st->initstate->len, tstate->st->initstate->s);
+    fprintf(yydata->f, "#define YY_MAXSTATE %d\n", i-1);
+    fprintf(yydata->f, "#define YY_INITSTATE YY_STATE_%.*s\n",
+            (int) yydata->st->initstate->len, yydata->st->initstate->s);
 
 } break;
 case 8: {
@@ -551,36 +547,36 @@ case 8: {
     fa_list_t *l;
     len_string *code;
 
-    for(l = tstate->patterns; l != NULL; l = l->next) {
+    for(l = yydata->patterns; l != NULL; l = l->next) {
         code = (len_string *) l->data3;
-        fprintf(tstate->f, "case %d: {\n%.*s\n} break;\n", l->done_num,
+        fprintf(yydata->f, "case %d: {\n%.*s\n} break;\n", l->done_num,
                 (int) code->len, code->s);
     }
 
 } break;
 case 9: {
 
-    len_string *p = tstate->st->ustate_type;
+    len_string *p = yydata->st->ustate_type;
     if(p != NULL)
-        fprintf(tstate->f, ", %.*s data", (int) p->len, p->s);
+        fprintf(yydata->f, ", %.*s data", (int) p->len, p->s);
 
 } break;
 case 10: {
 
-    if(tstate->st->ustate_type != NULL)
-        fputs(", data", tstate->f);
+    if(yydata->st->ustate_type != NULL)
+        fputs(", data", yydata->f);
 
 } break;
 case 11: {
 
-    len_string *p = tstate->st->ustate_type;
+    len_string *p = yydata->st->ustate_type;
     if(p != NULL)
-        fprintf(tstate->f, ", %.*s yydata", (int) p->len, p->s);
+        fprintf(yydata->f, ", %.*s yydata", (int) p->len, p->s);
 
 } break;
 case 12: {
 
-    fputc(yytext[0], tstate->f);
+    fputc(yytext[0], yydata->f);
 
 } break;
 

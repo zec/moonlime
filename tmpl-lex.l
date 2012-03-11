@@ -28,34 +28,30 @@ typedef struct {
     fa_list_t *patterns;
     fa_list_t *start_states;
 } tmpl_state;
-
-extern tmpl_state *tstate;
 }
 
-%top {
-tmpl_state *tstate = NULL;
-}
+%userdata { tmpl_state * }
 
 %prefix Template
 
 [%]HEADER[%] {
-    if(tstate->st->header != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->header->len,
-                tstate->st->header->s);
+    if(yydata->st->header != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->header->len,
+                yydata->st->header->s);
 }
 
 [%]TOP[%] {
-    if(tstate->st->top != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->top->len,
-                tstate->st->top->s);
+    if(yydata->st->top != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->top->len,
+                yydata->st->top->s);
 }
 
 [%]PREFIX[%] {
-    if(tstate->st->prefix != NULL)
-        fprintf(tstate->f, "%.*s", (int) tstate->st->prefix->len,
-                tstate->st->prefix->s);
+    if(yydata->st->prefix != NULL)
+        fprintf(yydata->f, "%.*s", (int) yydata->st->prefix->len,
+                yydata->st->prefix->s);
     else
-        fputs("Lexer", tstate->f);
+        fputs("Lexer", yydata->f);
 }
 
 [%]FASTATES[%] {
@@ -64,15 +60,15 @@ tmpl_state *tstate = NULL;
     int i = 0;
     int is_first = 1;
 
-    for(s = tstate->dfa->first; s != NULL; s = s->next) {
-        fprintf(tstate->f, "%s\n {%d, %d, ", is_first ? "" : ",",
+    for(s = yydata->dfa->first; s != NULL; s = s->next) {
+        fprintf(yydata->f, "%s\n {%d, %d, ", is_first ? "" : ",",
                 s->done_num, i);
         is_first = 0;
         for(t = s->trans; t != NULL; t = t->next)
             ++i;
-        fprintf(tstate->f, "%d}", i);
+        fprintf(yydata->f, "%d}", i);
     }
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 }
 
 [%]FATRANS[%] {
@@ -80,9 +76,9 @@ tmpl_state *tstate = NULL;
     trans_t *t;
     int is_first = 1, i, j, val;
 
-    for(s = tstate->dfa->first; s != NULL; s = s->next) {
+    for(s = yydata->dfa->first; s != NULL; s = s->next) {
         for(t = s->trans; t != NULL; t = t->next) {
-            fprintf(tstate->f, "%s\n { {", is_first ? "" : ",");
+            fprintf(yydata->f, "%s\n { {", is_first ? "" : ",");
             is_first = 0;
             for(i = 0; i < 256; i += 8) {
                 val = 0;
@@ -91,67 +87,67 @@ tmpl_state *tstate = NULL;
                        (1 << ((i+j)%ML_UINT_BIT)))
                     val |= 1 << j;
                 }
-                fprintf(tstate->f, "%d%s", val, (i < 248) ? "," : "");
+                fprintf(yydata->f, "%d%s", val, (i < 248) ? "," : "");
             }
-            fprintf(tstate->f, "}, %d }", t->dest->id);
+            fprintf(yydata->f, "}, %d }", t->dest->id);
         }
     }
 
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 }
 
 [%]FASTARTS[%] {
     fa_list_t *l;
 
-    for(l = tstate->start_states; l != NULL; l = l->next)
-        fprintf(tstate->f, "%s\n %d", (l == tstate->start_states) ? "" : ",",
+    for(l = yydata->start_states; l != NULL; l = l->next)
+        fprintf(yydata->f, "%s\n %d", (l == yydata->start_states) ? "" : ",",
                 l->state->id);
 
-    fputs("\n", tstate->f);
+    fputs("\n", yydata->f);
 }
 
 [%]START_STATE_DEFS[%] {
     fa_list_t *l;
     int i = 0;
 
-    for(l = tstate->start_states; l != NULL; l = l->next)
-        fprintf(tstate->f, "#define YY_STATE_%.*s %d\n",
+    for(l = yydata->start_states; l != NULL; l = l->next)
+        fprintf(yydata->f, "#define YY_STATE_%.*s %d\n",
                 (int) ((len_string *) l->data1)->len,
                 ((len_string *) l->data1)->s, i++);
 
-    fprintf(tstate->f, "#define YY_MAXSTATE %d\n", i-1);
-    fprintf(tstate->f, "#define YY_INITSTATE YY_STATE_%.*s\n",
-            (int) tstate->st->initstate->len, tstate->st->initstate->s);
+    fprintf(yydata->f, "#define YY_MAXSTATE %d\n", i-1);
+    fprintf(yydata->f, "#define YY_INITSTATE YY_STATE_%.*s\n",
+            (int) yydata->st->initstate->len, yydata->st->initstate->s);
 }
 
 [%]ACTIONS[%] {
     fa_list_t *l;
     len_string *code;
 
-    for(l = tstate->patterns; l != NULL; l = l->next) {
+    for(l = yydata->patterns; l != NULL; l = l->next) {
         code = (len_string *) l->data3;
-        fprintf(tstate->f, "case %d: {\n%.*s\n} break;\n", l->done_num,
+        fprintf(yydata->f, "case %d: {\n%.*s\n} break;\n", l->done_num,
                 (int) code->len, code->s);
     }
 }
 
 [%]UPARAM[%] {
-    len_string *p = tstate->st->ustate_type;
+    len_string *p = yydata->st->ustate_type;
     if(p != NULL)
-        fprintf(tstate->f, ", %.*s data", (int) p->len, p->s);
+        fprintf(yydata->f, ", %.*s data", (int) p->len, p->s);
 }
 
 [%]UDATA[%] {
-    if(tstate->st->ustate_type != NULL)
-        fputs(", data", tstate->f);
+    if(yydata->st->ustate_type != NULL)
+        fputs(", data", yydata->f);
 }
 
 [%]YYUPARAM[%] {
-    len_string *p = tstate->st->ustate_type;
+    len_string *p = yydata->st->ustate_type;
     if(p != NULL)
-        fprintf(tstate->f, ", %.*s yydata", (int) p->len, p->s);
+        fprintf(yydata->f, ", %.*s yydata", (int) p->len, p->s);
 }
 
 .|\n {
-    fputc(yytext[0], tstate->f);
+    fputc(yytext[0], yydata->f);
 }
