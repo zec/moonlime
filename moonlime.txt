@@ -188,7 +188,8 @@ non-zero otherwise; errors are currently non-recoverable.
 EXAMPLES
 --------
 
-The following is a simple integer RPN calculator (with a fixed-size stack):
+The following is a simple self-contained integer RPN calculator (with a
+fixed-size stack):
 
 .....
 include::rpn.l[]
