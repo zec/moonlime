@@ -37,13 +37,16 @@ ml-lexer.c: ml-lexer.l $(PROG) tmpl.c tmpl.h
 tmpl-lex.c: tmpl-lex.l $(PROG) tmpl.c tmpl.h
 	./$(PROG) $< -o $@ -i
 
-samples: $(SAMPLES)
+samples: $(SAMPLES) rpn
 
 $(SAMPLES): %: %.o sample-runner.o
 	$(CC) -o $@ $< sample-runner.o
 
+rpn: rpn.o
+	$(CC) -o $@ $<
+
 sample01-hexdump.c sample02-testregexes.c sample03-testNFAregexes.c \
-  sample04-teststates.c: %.c: %.l $(PROG) tmpl.c
+  sample04-teststates.c rpn.c: %.c: %.l $(PROG) tmpl.c
 	./$(PROG) $< -o $@
 
 doc: moonlime.html moonlime.1
@@ -56,3 +59,4 @@ moonlime.1: moonlime.txt
 
 clean:
 	rm -f $(PROG) $(SAMPLES) sample[0-9]*.c *-lex*.[ch] *.o *.html *.1
+	rm -f rpn rpn.c

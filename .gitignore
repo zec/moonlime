@@ -4,6 +4,8 @@
 
 /sample[0-9]*
 !/sample[0-9]*.l
+/rpn
+/rpn.c
 
 /moonlime.html
 /moonlime.xml
