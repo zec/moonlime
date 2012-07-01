@@ -1,3 +1,6 @@
+NOTE: This is currently (July 2012) unmaintained. (I lost interest in working
+on it.)
+
 A lexer-generator, inspired by Lex and Lemon, originally written in Lua and
 since rewritten and bootstrapped into pure C. See moonlime.txt for the manpage
 and INSTALL for information on installation.
